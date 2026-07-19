@@ -21,6 +21,12 @@ export default function AdminDashboard() {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState<string>("");
   
+  // User Edit State
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editUserBusinessName, setEditUserBusinessName] = useState("");
+  const [editUserLoginId, setEditUserLoginId] = useState("");
+  const [editUserPassword, setEditUserPassword] = useState("");
+  
   // Notification State
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
@@ -114,13 +120,42 @@ export default function AdminDashboard() {
       if (error) {
         setUserFormMessage({ text: error.message || "Failed to create user", type: "error" });
       } else {
-        setUserFormMessage({ text: "User created successfully!", type: "success" });
         setNewUserId(""); setNewPassword(""); setNewBusinessName("");
+        setNewPassword("");
         fetchUsers();
+        setUserFormMessage({ type: "success", text: "User created successfully!" });
       }
     } catch (err: any) {
       setUserFormMessage({ text: err.message, type: "error" });
     } finally { setLoading(false); }
+  };
+
+  const handleEditUser = async (id: string) => {
+    if (!editUserBusinessName || !editUserLoginId || !editUserPassword) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('business_users')
+        .update({ 
+          business_name: editUserBusinessName,
+          user_id: editUserLoginId,
+          password: editUserPassword
+        })
+        .eq('id', id)
+        .select();
+        
+      if (error) {
+        showToast("Error updating user: " + error.message, "error");
+      } else if (!data || data.length === 0) {
+        showToast("Update blocked! Add an UPDATE policy for business_users in Supabase.", "error");
+      } else {
+        setEditingUserId(null);
+        fetchUsers();
+        showToast("User updated successfully!");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteUser = async (id: string) => {
@@ -404,12 +439,34 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody className="divide-y divide-neutral-800/50">
                       {businessUsers.map((user) => (
-                        <tr key={user.id} className="hover:bg-neutral-800/20">
-                          <td className="px-6 py-4 text-white">{user.business_name}</td>
-                          <td className="px-6 py-4 font-mono">{user.user_id}</td>
-                          <td className="px-6 py-4 font-mono">{user.password}</td>
-                          <td className="px-6 py-4 text-right">
-                            <button onClick={() => handleDeleteUser(user.id)} className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg"><Trash2 size={16} /></button>
+                        <tr key={user.id} className="hover:bg-neutral-800/20 transition-colors">
+                          <td className="px-6 py-4 text-white">
+                            {editingUserId === user.id ? (
+                              <input value={editUserBusinessName} onChange={e => setEditUserBusinessName(e.target.value)} className="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 focus:outline-none focus:border-green-500" />
+                            ) : user.business_name}
+                          </td>
+                          <td className="px-6 py-4 font-mono">
+                            {editingUserId === user.id ? (
+                              <input value={editUserLoginId} onChange={e => setEditUserLoginId(e.target.value)} className="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 focus:outline-none focus:border-green-500" />
+                            ) : user.user_id}
+                          </td>
+                          <td className="px-6 py-4 font-mono">
+                            {editingUserId === user.id ? (
+                              <input value={editUserPassword} onChange={e => setEditUserPassword(e.target.value)} className="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 focus:outline-none focus:border-green-500" />
+                            ) : user.password}
+                          </td>
+                          <td className="px-6 py-4 text-right flex justify-end gap-2">
+                            {editingUserId === user.id ? (
+                              <>
+                                <button disabled={loading} onClick={() => handleEditUser(user.id)} className="p-2 text-green-500 hover:bg-green-500/10 rounded-lg" title="Save"><Save size={16} /></button>
+                                <button disabled={loading} onClick={() => setEditingUserId(null)} className="p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg" title="Cancel"><X size={16} /></button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => { setEditingUserId(user.id); setEditUserBusinessName(user.business_name); setEditUserLoginId(user.user_id); setEditUserPassword(user.password); }} className="p-2 text-neutral-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg" title="Edit User"><Edit2 size={16} /></button>
+                                <button onClick={() => handleDeleteUser(user.id)} className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg" title="Delete User"><Trash2 size={16} /></button>
+                              </>
+                            )}
                           </td>
                         </tr>
                       ))}
