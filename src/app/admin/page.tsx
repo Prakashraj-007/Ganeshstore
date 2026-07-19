@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase"; 
 import { useEffect, useState, useRef } from "react";
-import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -16,6 +16,14 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  
+  // Notification State
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
 
   // User Form states
   const [newUserId, setNewUserId] = useState("");
@@ -160,14 +168,13 @@ export default function AdminDashboard() {
       const { data, error } = await supabase.from("orders").update({ status }).eq("id", id).select();
       
       if (error) {
-        alert("Error updating order: " + error.message);
+        showToast("Error updating order: " + error.message, "error");
       } else if (!data || data.length === 0) {
-        alert("Update blocked! You need to run the SQL command to allow updates (UPDATE policy) in Supabase.");
+        showToast("Update blocked! Add an UPDATE policy in Supabase.", "error");
       } else {
         fetchOrders();
         if (status === 'completed') {
-          // Provide admin feedback that the system updated the customer's portal state.
-          alert("Order completed! The customer's portal has been instantly updated to notify them.");
+          showToast("Order completed! Customer has been notified.");
         }
       }
     } finally {
@@ -609,6 +616,17 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+    </div>
+      
+      {/* Toast Notification */}
+      {notification && (
+        <div className={`fixed bottom-8 right-8 z-50 px-5 py-4 rounded-2xl shadow-2xl border ${notification.type === 'success' ? 'bg-green-950/90 border-green-500/50 text-green-50' : 'bg-red-950/90 border-red-500/50 text-red-50'} backdrop-blur-xl max-w-sm transform transition-all duration-300 translate-y-0 opacity-100`}>
+          <div className="flex items-center gap-3">
+            {notification.type === 'success' ? <CheckCircle size={22} className="text-green-400 shrink-0" /> : <AlertCircle size={22} className="text-red-400 shrink-0" />}
+            <p className="text-sm font-medium leading-tight">{notification.message}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
