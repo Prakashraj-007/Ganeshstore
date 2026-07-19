@@ -380,11 +380,6 @@ export default function PortalDashboard() {
 
                 return (
                   <div key={product.id} className="bg-white rounded-2xl border border-neutral-100 shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col relative overflow-hidden">
-                    {discount > 0 && (
-                      <div className="absolute top-4 right-4 bg-red-50 text-red-600 text-xs font-bold px-2.5 py-1 rounded-full border border-red-100 z-10">
-                        {discount}% OFF
-                      </div>
-                    )}
                     
                     <div className="p-6 flex-1 flex flex-col">
                       <div className="w-12 h-12 bg-neutral-50 rounded-xl flex items-center justify-center mb-4 text-neutral-400 group-hover:scale-110 group-hover:text-accent transition-all duration-300">
@@ -410,9 +405,6 @@ export default function PortalDashboard() {
                       
                       <div className={`mt-4 pt-4 border-t border-neutral-100 ${!(product.name_tamil || product.name_tanglish) && 'mt-auto'}`}>
                         <div className="flex flex-col mb-4">
-                          <span className="text-xs text-neutral-400 font-medium line-through mb-1">
-                            MRP: ₹{mrp.toFixed(2)}
-                          </span>
                           <div className="flex items-end gap-2">
                             <span className="text-2xl font-black text-neutral-900 tracking-tight">
                               ₹{sellingPrice.toFixed(2)}

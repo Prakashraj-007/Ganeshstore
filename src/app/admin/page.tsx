@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase"; 
 import { useEffect, useState, useRef } from "react";
-import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check, CheckCircle, AlertCircle } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check, CheckCircle, AlertCircle, Edit2, X, Save } from "lucide-react";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -16,6 +16,10 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  
+  // Product Edit State
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState<string>("");
   
   // Notification State
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -153,6 +157,30 @@ export default function AdminDashboard() {
     } catch (err: any) {
       setProductFormMessage({ text: err.message, type: "error" });
     } finally { setLoading(false); }
+  };
+
+  const handleEditProductPrice = async (id: string) => {
+    if (!editPrice) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .update({ selling_price: parseFloat(editPrice) })
+        .eq('id', id)
+        .select();
+        
+      if (error) {
+        showToast("Error updating price: " + error.message, "error");
+      } else if (!data || data.length === 0) {
+        showToast("Update blocked! Add an UPDATE policy for products in Supabase.", "error");
+      } else {
+        setEditingProductId(null);
+        fetchProducts();
+        showToast("Product price updated successfully!");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteProduct = async (id: string) => {
@@ -478,22 +506,38 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody className="divide-y divide-neutral-800/50">
                       {products.map((product) => (
-                        <tr key={product.id} className="hover:bg-neutral-800/20">
-                          <td className="px-6 py-4 text-white">
-                            <div className="font-medium text-lg text-white mb-1">
-                              {product.name_tamil || product.name}
-                            </div>
-                            {(product.name_tamil || product.name_tanglish) && (
-                              <div className="text-xs text-neutral-500 flex flex-col">
-                                {product.name_tamil && <span>{product.name}</span>}
-                                {product.name_tanglish && <span>{product.name_tanglish}</span>}
-                              </div>
-                            )}
+                        <tr key={product.id} className="hover:bg-neutral-800/20 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-white">{product.name}</div>
+                            <div className="text-xs text-neutral-500">{product.name_tamil}</div>
                           </td>
                           <td className="px-6 py-4">₹{parseFloat(product.mrp).toFixed(2)}</td>
-                          <td className="px-6 py-4 text-green-400 font-semibold">₹{parseFloat(product.selling_price).toFixed(2)}</td>
-                          <td className="px-6 py-4 text-right">
-                            <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg"><Trash2 size={16} /></button>
+                          <td className="px-6 py-4 font-bold text-white">
+                            {editingProductId === product.id ? (
+                              <input 
+                                type="number"
+                                step="0.01"
+                                value={editPrice}
+                                onChange={(e) => setEditPrice(e.target.value)}
+                                className="w-24 bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-white focus:outline-none focus:border-green-500"
+                                autoFocus
+                              />
+                            ) : (
+                              `₹${parseFloat(product.selling_price).toFixed(2)}`
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right flex justify-end gap-2">
+                            {editingProductId === product.id ? (
+                              <>
+                                <button disabled={loading} onClick={() => handleEditProductPrice(product.id)} className="p-2 text-green-500 hover:bg-green-500/10 rounded-lg" title="Save"><Save size={16} /></button>
+                                <button disabled={loading} onClick={() => setEditingProductId(null)} className="p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg" title="Cancel"><X size={16} /></button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => { setEditingProductId(product.id); setEditPrice(product.selling_price.toString()); }} className="p-2 text-neutral-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg" title="Edit Price"><Edit2 size={16} /></button>
+                                <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg" title="Delete Product"><Trash2 size={16} /></button>
+                              </>
+                            )}
                           </td>
                         </tr>
                       ))}
