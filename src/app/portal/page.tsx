@@ -132,7 +132,8 @@ export default function PortalDashboard() {
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
-        const newQuantity = Math.max(0, Math.round((existing.quantity + delta) * 100) / 100);
+        const currentQty = Number(existing.quantity) || 0;
+        const newQuantity = Math.max(0, Math.round((currentQty + delta) * 100) / 100);
         if (newQuantity === 0) {
           return prev.filter(item => item.product.id !== product.id);
         }
