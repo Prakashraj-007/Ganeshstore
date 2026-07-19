@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C59341" />
+      <stop offset="50%" stop-color="#E2B969" />
+      <stop offset="100%" stop-color="#9A6B29" />
+    </linearGradient>
+  </defs>
+  <!-- Background is transparent -->
+  
+  <!-- stylized RJPB -->
+  <text x="100" y="115" font-family="Georgia, serif" font-size="65" font-weight="bold" fill="url(#gold)" text-anchor="middle" dominant-baseline="middle" letter-spacing="-2">
+    RJPB
+  </text>
+  <!-- decorative underline or flourishes could go here -->
+  <path d="M 30,145 Q 100,165 170,145" fill="transparent" stroke="url(#gold)" stroke-width="4" stroke-linecap="round"/>
+</svg>

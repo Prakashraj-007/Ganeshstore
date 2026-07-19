@@ -1,0 +1,614 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase"; 
+import { useEffect, useState, useRef } from "react";
+import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check } from "lucide-react";
+
+export default function AdminDashboard() {
+  const router = useRouter();
+  const [dbStatus, setDbStatus] = useState("Checking connection...");
+  const [activeTab, setActiveTab] = useState("users"); // 'users' or 'products'
+  
+  // Data states
+  const [businessUsers, setBusinessUsers] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+
+  // User Form states
+  const [newUserId, setNewUserId] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newBusinessName, setNewBusinessName] = useState("");
+  const [userFormMessage, setUserFormMessage] = useState({ text: "", type: "" });
+
+  // Product Form states
+  const [newProductName, setNewProductName] = useState("");
+  const [newProductNameTamil, setNewProductNameTamil] = useState("");
+  const [newProductNameTanglish, setNewProductNameTanglish] = useState("");
+  const [newMrp, setNewMrp] = useState("");
+  const [newSellingPrice, setNewSellingPrice] = useState("");
+  const [productFormMessage, setProductFormMessage] = useState({ text: "", type: "" });
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    async function init() {
+      try {
+        if (supabase) {
+           setDbStatus("Connected to Supabase Client");
+           fetchUsers();
+           fetchProducts();
+           fetchOrders();
+        }
+      } catch (err) {
+        setDbStatus("Failed to connect to Supabase");
+      }
+    }
+    init();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase.from("business_users").select("*").order("created_at", { ascending: false });
+      if (error) {
+        if (error.code === '42P01') setUserFormMessage({ text: "Please create the 'business_users' table in Supabase first.", type: "error" });
+        return;
+      }
+      if (data) setBusinessUsers(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+      if (error) {
+        if (error.code === '42P01') setProductFormMessage({ text: "Please create the 'products' table in Supabase first.", type: "error" });
+        return;
+      }
+      if (data) setProducts(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+      if (error) {
+        if (error.code === '42P01') console.warn("Orders table not created yet");
+        return;
+      }
+      if (data) setOrders(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // --- USER HANDLERS ---
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setUserFormMessage({ text: "", type: "" });
+
+    try {
+      const { error } = await supabase
+        .from("business_users")
+        .insert([{ user_id: newUserId, password: newPassword, business_name: newBusinessName }]);
+
+      if (error) {
+        setUserFormMessage({ text: error.message || "Failed to create user", type: "error" });
+      } else {
+        setUserFormMessage({ text: "User created successfully!", type: "success" });
+        setNewUserId(""); setNewPassword(""); setNewBusinessName("");
+        fetchUsers();
+      }
+    } catch (err: any) {
+      setUserFormMessage({ text: err.message, type: "error" });
+    } finally { setLoading(false); }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    const { error } = await supabase.from("business_users").delete().eq("id", id);
+    if (error) alert("Error deleting user: " + error.message);
+    else fetchUsers();
+  };
+
+  // --- PRODUCT HANDLERS ---
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setProductFormMessage({ text: "", type: "" });
+
+    try {
+      const { error } = await supabase
+        .from("products")
+        .insert([{ 
+          name: newProductName, 
+          name_tamil: newProductNameTamil || null,
+          name_tanglish: newProductNameTanglish || null,
+          mrp: parseFloat(newMrp), 
+          selling_price: parseFloat(newSellingPrice) 
+        }]);
+
+      if (error) {
+        setProductFormMessage({ text: error.message || "Failed to create product", type: "error" });
+      } else {
+        setProductFormMessage({ text: "Product added successfully!", type: "success" });
+        setNewProductName(""); setNewProductNameTamil(""); setNewProductNameTanglish(""); setNewMrp(""); setNewSellingPrice("");
+        fetchProducts();
+      }
+    } catch (err: any) {
+      setProductFormMessage({ text: err.message, type: "error" });
+    } finally { setLoading(false); }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) alert("Error deleting product: " + error.message);
+    else fetchProducts();
+  };
+
+  const handleUpdateOrderStatus = async (id: string, status: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from("orders").update({ status }).eq("id", id).select();
+      
+      if (error) {
+        alert("Error updating order: " + error.message);
+      } else if (!data || data.length === 0) {
+        alert("Update blocked! You need to run the SQL command to allow updates (UPDATE policy) in Supabase.");
+      } else {
+        fetchOrders();
+        if (status === 'completed') {
+          // Provide admin feedback that the system updated the customer's portal state.
+          alert("Order completed! The customer's portal has been instantly updated to notify them.");
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- CSV UPLOAD HANDLER ---
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    setProductFormMessage({ text: "Reading CSV...", type: "info" });
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      
+      const newProducts = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const currentLine = lines[i].split(',').map(v => v.trim());
+        
+        let productData: any = {};
+        headers.forEach((header, index) => {
+          if (header.includes('name') && !header.includes('tamil') && !header.includes('tanglish')) productData.name = currentLine[index];
+          if (header.includes('tamil')) productData.name_tamil = currentLine[index];
+          if (header.includes('tanglish')) productData.name_tanglish = currentLine[index];
+          if (header === 'mrp') productData.mrp = parseFloat(currentLine[index]);
+          if (header === 'selling_price' || header === 'price' || header === 'rate') productData.selling_price = parseFloat(currentLine[index]);
+        });
+        
+        if (productData.name && !isNaN(productData.mrp) && !isNaN(productData.selling_price)) {
+          newProducts.push(productData);
+        }
+      }
+
+      if (newProducts.length === 0) {
+        setProductFormMessage({ text: "No valid products found in CSV. Check column names (name, mrp, selling_price).", type: "error" });
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setProductFormMessage({ text: `Inserting ${newProducts.length} products...`, type: "info" });
+        const { error } = await supabase.from('products').insert(newProducts);
+        
+        if (error) {
+          setProductFormMessage({ text: `Error importing: ${error.message}`, type: "error" });
+        } else {
+          setProductFormMessage({ text: `Successfully imported ${newProducts.length} products!`, type: "success" });
+          fetchProducts();
+        }
+      } catch (err: any) {
+        setProductFormMessage({ text: `Error: ${err.message}`, type: "error" });
+      } finally {
+        setLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("isAdminAuth");
+    router.push("/admin/login");
+  };
+
+  return (
+    <div className="min-h-screen bg-neutral-950 flex flex-col md:flex-row">
+      {/* Sidebar */}
+      <aside className="w-full md:w-64 bg-neutral-900/50 border-r border-neutral-800 flex flex-col backdrop-blur-xl">
+        <div className="p-6 border-b border-neutral-800">
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center text-green-500">
+              <Database size={18} />
+            </div>
+            Admin<span className="text-green-500">Panel</span>
+          </h2>
+        </div>
+        
+        <nav className="flex-1 p-4 space-y-1">
+          <button 
+            onClick={() => setActiveTab('users')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'users' ? 'bg-green-500/10 text-green-500' : 'text-neutral-400 hover:text-white hover:bg-neutral-800'}`}
+          >
+            <Users size={20} /> Users
+          </button>
+          <button 
+            onClick={() => setActiveTab('products')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'products' ? 'bg-green-500/10 text-green-500' : 'text-neutral-400 hover:text-white hover:bg-neutral-800'}`}
+          >
+            <Package size={20} /> Products
+          </button>
+          <button 
+            onClick={() => setActiveTab('orders')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'orders' ? 'bg-green-500/10 text-green-500' : 'text-neutral-400 hover:text-white hover:bg-neutral-800'}`}
+          >
+            <ShoppingBag size={20} /> Orders
+            {orders.filter(o => o.status === 'pending').length > 0 && (
+              <span className="ml-auto bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                {orders.filter(o => o.status === 'pending').length}
+              </span>
+            )}
+          </button>
+        </nav>
+
+        <div className="p-4 border-t border-neutral-800">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl font-medium transition-colors"
+          >
+            <LogOut size={20} /> Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+        <header className="mb-10">
+          <h1 className="text-3xl font-bold text-white tracking-tight">
+            {activeTab === 'users' ? 'User Management' : activeTab === 'products' ? 'Product Management' : 'Order Management'}
+          </h1>
+          <p className="text-neutral-400 mt-2">
+            {activeTab === 'users' ? 'Manage business portal access credentials.' : activeTab === 'products' ? 'Manage your wholesale product catalog.' : 'View and process wholesale orders.'}
+          </p>
+        </header>
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+          <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl">
+            <h3 className="text-neutral-400 text-sm font-medium mb-4 flex items-center gap-2">
+              <Database size={16} /> Database Status
+            </h3>
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
+              <p className="text-white font-semibold text-lg">{dbStatus}</p>
+            </div>
+          </div>
+
+          <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl">
+            <h3 className="text-neutral-400 text-sm font-medium mb-4 flex items-center gap-2">
+              {activeTab === 'users' ? <Users size={16} /> : activeTab === 'products' ? <Package size={16} /> : <ShoppingBag size={16} />}
+              Total {activeTab === 'users' ? 'Business Users' : activeTab === 'products' ? 'Products' : 'Orders'}
+            </h3>
+            <p className="text-4xl font-bold text-white">{activeTab === 'users' ? businessUsers.length : activeTab === 'products' ? products.length : orders.length}</p>
+          </div>
+        </div>
+
+        {/* USERS TAB */}
+        {activeTab === 'users' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1">
+              <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl sticky top-6">
+                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                  <Plus className="text-green-500" /> Create Business User
+                </h2>
+                {userFormMessage.text && (
+                  <div className={`p-3 rounded-xl mb-6 text-sm ${userFormMessage.type === "error" ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-green-500/10 text-green-500 border border-green-500/20"}`}>
+                    {userFormMessage.text}
+                  </div>
+                )}
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1.5">Business Name</label>
+                    <input required value={newBusinessName} onChange={e => setNewBusinessName(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all" placeholder="e.g. Royal Hotel" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1.5">User ID</label>
+                    <input required value={newUserId} onChange={e => setNewUserId(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all" placeholder="e.g. 9445236480" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1.5">Password</label>
+                    <input required value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all" placeholder="e.g. 2006" />
+                  </div>
+                  <button type="submit" disabled={loading} className="w-full mt-4 bg-green-600 hover:bg-green-500 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 disabled:opacity-50">
+                    {loading ? "Creating..." : "Create User"}
+                  </button>
+                </form>
+              </div>
+            </div>
+            <div className="lg:col-span-2">
+              <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl overflow-hidden backdrop-blur-xl">
+                <div className="p-6 border-b border-neutral-800 flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-white">Existing Users</h2>
+                  <button onClick={fetchUsers} className="text-sm text-green-500 hover:text-green-400">Refresh List</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-neutral-400">
+                    <thead className="bg-neutral-950 text-neutral-300">
+                      <tr><th className="px-6 py-4">Business Name</th><th className="px-6 py-4">User ID</th><th className="px-6 py-4">Password</th><th className="px-6 py-4 text-right">Actions</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-800/50">
+                      {businessUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-neutral-800/20">
+                          <td className="px-6 py-4 text-white">{user.business_name}</td>
+                          <td className="px-6 py-4 font-mono">{user.user_id}</td>
+                          <td className="px-6 py-4 font-mono">{user.password}</td>
+                          <td className="px-6 py-4 text-right">
+                            <button onClick={() => handleDeleteUser(user.id)} className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg"><Trash2 size={16} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PRODUCTS TAB */}
+        {activeTab === 'products' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1 space-y-6">
+              
+              {/* Add Product Form */}
+              <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl">
+                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                  <Plus className="text-green-500" /> Add Single Product
+                </h2>
+                {productFormMessage.text && (
+                  <div className={`p-3 rounded-xl mb-6 text-sm ${productFormMessage.type === "error" ? "bg-red-500/10 text-red-500 border border-red-500/20" : productFormMessage.type === "success" ? "bg-green-500/10 text-green-500 border border-green-500/20" : "bg-blue-500/10 text-blue-500 border border-blue-500/20"}`}>
+                    {productFormMessage.text}
+                  </div>
+                )}
+                <form onSubmit={handleCreateProduct} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1.5">Product Name (English)</label>
+                    <input required value={newProductName} onChange={e => setNewProductName(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all" placeholder="e.g. Premium Basmati Rice (25kg)" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1.5">Tamil Name (Optional)</label>
+                    <input value={newProductNameTamil} onChange={e => setNewProductNameTamil(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all" placeholder="e.g. பாஸ்மதி அரிசி" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1.5">Tanglish Name (Optional)</label>
+                    <input value={newProductNameTanglish} onChange={e => setNewProductNameTanglish(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all" placeholder="e.g. Basmati Arisi" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-400 mb-1.5">MRP (₹)</label>
+                      <input required type="number" step="0.01" value={newMrp} onChange={e => setNewMrp(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all" placeholder="0.00" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-400 mb-1.5">Selling Price (₹)</label>
+                      <input required type="number" step="0.01" value={newSellingPrice} onChange={e => setNewSellingPrice(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all" placeholder="0.00" />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={loading} className="w-full mt-4 bg-green-600 hover:bg-green-500 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 disabled:opacity-50">
+                    {loading ? "Adding..." : "Add Product"}
+                  </button>
+                </form>
+              </div>
+
+              {/* Bulk Upload Section */}
+              <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl">
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <Upload className="text-blue-500" /> Bulk Upload CSV
+                </h2>
+                <p className="text-sm text-neutral-400 mb-4">
+                  Upload a CSV file to add multiple products. Required columns: <code className="text-neutral-300 bg-neutral-800 px-1 rounded">name</code>, <code className="text-neutral-300 bg-neutral-800 px-1 rounded">mrp</code>, <code className="text-neutral-300 bg-neutral-800 px-1 rounded">selling_price</code>. Optional: <code className="text-neutral-300 bg-neutral-800 px-1 rounded">name_tamil</code>, <code className="text-neutral-300 bg-neutral-800 px-1 rounded">name_tanglish</code>.
+                </p>
+                
+                <input 
+                  type="file" 
+                  accept=".csv"
+                  className="hidden" 
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                />
+                
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading}
+                  className="w-full bg-blue-600/20 border border-blue-500/50 text-blue-400 hover:bg-blue-600 hover:text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <Upload size={18} /> {loading ? "Processing..." : "Select CSV File"}
+                </button>
+              </div>
+
+            </div>
+            
+            <div className="lg:col-span-2">
+              <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl overflow-hidden backdrop-blur-xl">
+                <div className="p-6 border-b border-neutral-800 flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-white">Product Catalog</h2>
+                  <button onClick={fetchProducts} className="text-sm text-green-500 hover:text-green-400">Refresh List</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-neutral-400">
+                    <thead className="bg-neutral-950 text-neutral-300">
+                      <tr><th className="px-6 py-4">Product Name</th><th className="px-6 py-4">MRP</th><th className="px-6 py-4">Selling Price</th><th className="px-6 py-4 text-right">Actions</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-800/50">
+                      {products.map((product) => (
+                        <tr key={product.id} className="hover:bg-neutral-800/20">
+                          <td className="px-6 py-4 text-white">
+                            <div className="font-medium text-lg text-white mb-1">
+                              {product.name_tamil || product.name}
+                            </div>
+                            {(product.name_tamil || product.name_tanglish) && (
+                              <div className="text-xs text-neutral-500 flex flex-col">
+                                {product.name_tamil && <span>{product.name}</span>}
+                                {product.name_tanglish && <span>{product.name_tanglish}</span>}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">₹{parseFloat(product.mrp).toFixed(2)}</td>
+                          <td className="px-6 py-4 text-green-400 font-semibold">₹{parseFloat(product.selling_price).toFixed(2)}</td>
+                          <td className="px-6 py-4 text-right">
+                            <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg"><Trash2 size={16} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ORDERS TAB */}
+        {activeTab === 'orders' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-end mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-white tracking-tight">Incoming Orders</h2>
+                <p className="text-neutral-400 mt-1">Review and process your latest wholesale requests.</p>
+              </div>
+              <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 bg-neutral-900 border border-neutral-800 hover:border-green-500/50 text-neutral-300 hover:text-white rounded-xl transition-all shadow-sm">
+                <Database size={16} className="text-green-500" /> Refresh
+              </button>
+            </div>
+            
+            {orders.length === 0 ? (
+              <div className="bg-neutral-900/40 border border-neutral-800 rounded-3xl p-16 text-center backdrop-blur-xl">
+                <div className="w-24 h-24 bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-neutral-700">
+                  <ShoppingBag size={40} className="text-neutral-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">No Orders Yet</h3>
+                <p className="text-neutral-400 max-w-md mx-auto">When your clients place orders through the wholesale portal, they will magically appear right here.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {orders.map((order) => {
+                  const isExpanded = expandedOrder === order.id;
+                  const date = new Date(order.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
+                  
+                  return (
+                    <div key={order.id} className="relative group rounded-2xl bg-gradient-to-br from-neutral-900 to-neutral-900/60 border border-neutral-800 hover:border-neutral-700 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                      {order.status === 'pending' && <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)]"></div>}
+                      {order.status === 'completed' && <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>}
+                      
+                      <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
+                        <div className="flex-1 cursor-pointer" onClick={() => setExpandedOrder(isExpanded ? null : order.id)}>
+                          <div className="flex items-center gap-4 mb-3">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center text-white font-black text-xl border border-neutral-700 shadow-inner">
+                              {order.business_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-3">
+                                {order.business_name}
+                                <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${order.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/30' : order.status === 'cancelled' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.1)]'}`}>
+                                  {order.status}
+                                </span>
+                              </h3>
+                              <div className="text-sm text-neutral-400 font-medium mt-1 flex items-center gap-4">
+                                <span>{date}</span>
+                                <span className="w-1 h-1 rounded-full bg-neutral-700"></span>
+                                <span>{order.items.length} items</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
+                          <div className="text-right">
+                            <div className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">Total Amount</div>
+                            <div className="text-2xl font-black text-white">₹{parseFloat(order.total_amount).toFixed(2)}</div>
+                          </div>
+                          
+                            {/* The expand/collapse arrow was removed as requested. The tick button is moved to the bottom. */}
+                        </div>
+                      </div>
+                      
+                      {isExpanded && (
+                        <div className="px-6 pb-6 pt-2">
+                          <div className="bg-neutral-950/50 rounded-2xl border border-neutral-800 p-5 shadow-inner">
+                            <h4 className="text-xs font-bold text-neutral-500 mb-4 uppercase tracking-widest flex items-center gap-2">
+                              <ShoppingBag size={14} /> Order Contents
+                            </h4>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              {order.items.map((item: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between bg-neutral-900/80 border border-neutral-800/80 hover:border-neutral-700 rounded-xl p-4 transition-colors">
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-neutral-950 rounded-lg flex items-center justify-center text-white font-black border border-neutral-800 shadow-inner">
+                                      {item.quantity}<span className="text-[10px] text-neutral-500 ml-0.5">x</span>
+                                    </div>
+                                    <div>
+                                      <h5 className="font-bold text-white text-base">{item.product.name_tamil || item.product.name}</h5>
+                                      <p className="text-sm text-neutral-500 font-medium mt-0.5">₹{item.product.selling_price.toFixed(2)} / item</p>
+                                    </div>
+                                  </div>
+                                  <div className="font-black text-lg text-neutral-300">
+                                    ₹{Math.round((Number(item.quantity) || 0) * item.product.selling_price)}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {order.status === 'pending' && (
+                              <div className="mt-6 pt-6 border-t border-neutral-800/80 flex justify-end">
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); handleUpdateOrderStatus(order.id, 'completed'); }}
+                                  disabled={loading}
+                                  className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-400 text-neutral-950 font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
+                                >
+                                  <Check size={20} strokeWidth={3} /> Mark Order as Completed
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
