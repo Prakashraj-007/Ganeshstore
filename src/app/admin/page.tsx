@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase"; 
 import { useEffect, useState, useRef } from "react";
-import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check, CheckCircle, AlertCircle, Edit2, X, Save } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check, CheckCircle, AlertCircle, Edit2, X, Save, Search } from "lucide-react";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   // Product Edit State
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState<string>("");
+  const [productSearch, setProductSearch] = useState("");
   
   // User Edit State
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -552,9 +553,21 @@ export default function AdminDashboard() {
             
             <div className="lg:col-span-2">
               <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl overflow-hidden backdrop-blur-xl">
-                <div className="p-6 border-b border-neutral-800 flex justify-between items-center">
+                <div className="p-6 border-b border-neutral-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-xl font-bold text-white">Product Catalog</h2>
-                  <button onClick={fetchProducts} className="text-sm text-green-500 hover:text-green-400">Refresh List</button>
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:w-64">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                      <input 
+                        type="text" 
+                        placeholder="Search products..." 
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500/50"
+                      />
+                    </div>
+                    <button onClick={fetchProducts} className="text-sm text-green-500 hover:text-green-400 whitespace-nowrap">Refresh</button>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm text-neutral-400">
@@ -562,7 +575,12 @@ export default function AdminDashboard() {
                       <tr><th className="px-6 py-4">Product Name</th><th className="px-6 py-4">MRP</th><th className="px-6 py-4">Selling Price</th><th className="px-6 py-4 text-right">Actions</th></tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-800/50">
-                      {products.map((product) => (
+                      {products
+                        .filter(p => {
+                          const s = productSearch.toLowerCase();
+                          return (p.name?.toLowerCase().includes(s) || p.name_tamil?.toLowerCase().includes(s) || p.name_tanglish?.toLowerCase().includes(s));
+                        })
+                        .map((product) => (
                         <tr key={product.id} className="hover:bg-neutral-800/20 transition-colors">
                           <td className="px-6 py-4">
                             <div className="font-bold text-white">{product.name}</div>
