@@ -717,7 +717,6 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
-    </div>
       
       {/* Toast Notification */}
       {notification && (
