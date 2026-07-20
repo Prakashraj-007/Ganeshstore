@@ -309,7 +309,8 @@ export default function AdminDashboard() {
   const printThermalBill = (order: any) => {
     const dateObj = new Date(order.created_at);
     const dateStr = dateObj.toLocaleDateString('en-GB'); // DD/MM/YYYY
-    const timeStr = dateObj.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const timeStr = dateObj.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' });
+    const shortId = order.id ? order.id.substring(0, 8).toUpperCase() : '101';
     
     const itemsHtml = order.items.map((item: any) => {
       const name = item.product.name_tamil || item.product.name;
@@ -318,10 +319,10 @@ export default function AdminDashboard() {
       const total = (qty * item.product.selling_price).toFixed(2);
       return `
         <tr>
-          <td style="padding: 3px 0;">${name}</td>
-          <td style="text-align: center; padding: 3px 0;">${qty}</td>
-          <td style="text-align: right; padding: 3px 0;">${price}</td>
-          <td style="text-align: right; padding: 3px 0;">${total}</td>
+          <td class="item-col" style="padding: 4px 0; word-wrap: break-word;">${name}</td>
+          <td class="qty-col" style="padding: 4px 0;">${qty}</td>
+          <td class="rate-col" style="padding: 4px 0;">${price}</td>
+          <td class="total-col" style="padding: 4px 0;">${total}</td>
         </tr>
       `;
     }).join('');
@@ -329,47 +330,53 @@ export default function AdminDashboard() {
     const htmlContent = `
       <html>
         <head>
-          <title>Print Bill - ${order.id}</title>
+          <title>Print Bill - ${shortId}</title>
           <style>
             @page { margin: 0; }
             body { 
               font-family: 'Arial', sans-serif; 
-              font-size: 11px; 
+              font-size: 12px; 
               margin: 0; 
-              padding: 0; 
+              padding: 4mm; 
               width: 77mm; 
+              box-sizing: border-box;
               color: #000;
             }
             .center { text-align: center; }
             .bold { font-weight: bold; }
             .dashed-line { border-top: 1px dashed #000; margin: 4px 0; }
-            table { width: 100%; border-collapse: collapse; }
-            th { text-align: left; padding: 4px 0; border-bottom: 1px dashed #000; }
-            .qty-col { text-align: center; width: 15%; }
-            .rate-col { text-align: right; width: 20%; }
-            .total-col { text-align: right; width: 25%; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            th { padding: 4px 0; border-bottom: 1px dashed #000; font-size: 12px; }
+            th.item-col { text-align: left; width: 45%; }
+            th.qty-col { text-align: center; width: 15%; }
+            th.rate-col { text-align: right; width: 18%; }
+            th.total-col { text-align: right; width: 22%; }
+            td { font-size: 12px; vertical-align: top; }
+            .item-col { text-align: left; padding-right: 2px; }
+            .qty-col { text-align: center; }
+            .rate-col { text-align: right; }
+            .total-col { text-align: right; }
           </style>
         </head>
         <body>
-          <div class="center" style="font-size: 10px; margin-top: 5px;">ஸ்ரீ பத்ரகாளியம்மன் துணை</div>
+          <div class="center" style="font-size: 11px; margin-top: 2px;">ஸ்ரீ பத்ரகாளியம்மன் துணை</div>
           <div class="center bold" style="font-size: 16px; margin: 2px 0;">நியூ கணேஷ் ஸ்டோர்</div>
-          <div class="center" style="font-size: 11px;">எண்.711, அகரம் மெயின் ரோடு</div>
-          <div class="center" style="font-size: 11px;">திருவஞ்சேரி, சென்னை - 600126</div>
-          <div class="center" style="font-size: 11px;">போன் : 9445236480, 7418146480</div>
-          <div class="center" style="font-size: 11px;">GSTIN : 33BJQPR7834D1ZV</div>
+          <div class="center" style="font-size: 12px;">எண்.711, அகரம் மெயின் ரோடு</div>
+          <div class="center" style="font-size: 12px;">திருவஞ்சேரி, சென்னை - 600126</div>
+          <div class="center" style="font-size: 12px;">போன் : 9445236480, 7418146480</div>
+          <div class="center" style="font-size: 12px;">GSTIN : 33BJQPR7834D1ZV</div>
           
-          <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px;">
-            <span>${order.id || '101'}</span>
-            <span>${timeStr}</span>
-            <span>${dateStr}</span>
+          <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px;">
+            <span>ID: ${shortId}</span>
+            <span>${dateStr} ${timeStr}</span>
           </div>
           
-          <div class="dashed-line" style="margin-top: 2px;"></div>
+          <div class="dashed-line" style="margin-top: 4px;"></div>
           
           <table>
             <thead>
               <tr>
-                <th>விபரங்கள்</th>
+                <th class="item-col">விபரங்கள்</th>
                 <th class="qty-col">அளவு</th>
                 <th class="rate-col">விலை</th>
                 <th class="total-col">தொகை</th>
@@ -382,15 +389,15 @@ export default function AdminDashboard() {
           
           <div class="dashed-line"></div>
           
-          <div style="display: flex; justify-content: space-between; font-size: 13px;" class="bold">
+          <div style="display: flex; justify-content: space-between; font-size: 14px;" class="bold">
             <span>எண் : ${order.items.length}</span>
-            <span>மொத்தம் ${parseFloat(order.total_amount).toFixed(2)}</span>
+            <span>மொத்தம் : ₹${parseFloat(order.total_amount).toFixed(2)}</span>
           </div>
           
           <div class="dashed-line"></div>
           
-          <div class="center" style="font-size: 11px; margin-top: 4px;">பொருட்களை சரி பார்த்து எடுத்து செல்லவும்</div>
-          <div class="center" style="font-size: 11px; margin-bottom: 10px;">நன்றி மீண்டும் வருக</div>
+          <div class="center" style="font-size: 12px; margin-top: 6px;">பொருட்களை சரி பார்த்து எடுத்து செல்லவும்</div>
+          <div class="center" style="font-size: 12px; margin-bottom: 10px;">நன்றி மீண்டும் வருக</div>
         </body>
       </html>
     `;
