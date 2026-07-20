@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase"; 
 import { useEffect, useState, useRef } from "react";
-import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check, CheckCircle, AlertCircle, Edit2, X, Save, Search } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check, CheckCircle, AlertCircle, Edit2, X, Save, Search, Printer } from "lucide-react";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -304,6 +304,118 @@ export default function AdminDashboard() {
       }
     };
     reader.readAsText(file);
+  };
+
+  const printThermalBill = (order: any) => {
+    const dateObj = new Date(order.created_at);
+    const dateStr = dateObj.toLocaleDateString('en-GB'); // DD/MM/YYYY
+    const timeStr = dateObj.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    const itemsHtml = order.items.map((item: any) => {
+      const name = item.product.name_tamil || item.product.name;
+      const qty = item.quantity;
+      const price = item.product.selling_price.toFixed(2);
+      const total = (qty * item.product.selling_price).toFixed(2);
+      return `
+        <tr>
+          <td style="padding: 3px 0;">${name}</td>
+          <td style="text-align: center; padding: 3px 0;">${qty}</td>
+          <td style="text-align: right; padding: 3px 0;">${price}</td>
+          <td style="text-align: right; padding: 3px 0;">${total}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Print Bill - ${order.id}</title>
+          <style>
+            @page { margin: 0; }
+            body { 
+              font-family: 'Arial', sans-serif; 
+              font-size: 11px; 
+              margin: 0; 
+              padding: 0; 
+              width: 77mm; 
+              color: #000;
+            }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .dashed-line { border-top: 1px dashed #000; margin: 4px 0; }
+            table { width: 100%; border-collapse: collapse; }
+            th { text-align: left; padding: 4px 0; border-bottom: 1px dashed #000; }
+            .qty-col { text-align: center; width: 15%; }
+            .rate-col { text-align: right; width: 20%; }
+            .total-col { text-align: right; width: 25%; }
+          </style>
+        </head>
+        <body>
+          <div class="center" style="font-size: 10px; margin-top: 5px;">ஸ்ரீ பத்ரகாளியம்மன் துணை</div>
+          <div class="center bold" style="font-size: 16px; margin: 2px 0;">நியூ கணேஷ் ஸ்டோர்</div>
+          <div class="center" style="font-size: 11px;">எண்.711, அகரம் மெயின் ரோடு</div>
+          <div class="center" style="font-size: 11px;">திருவஞ்சேரி, சென்னை - 600126</div>
+          <div class="center" style="font-size: 11px;">போன் : 9445236480, 7418146480</div>
+          <div class="center" style="font-size: 11px;">GSTIN : 33BJQPR7834D1ZV</div>
+          
+          <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px;">
+            <span>${order.id || '101'}</span>
+            <span>${timeStr}</span>
+            <span>${dateStr}</span>
+          </div>
+          
+          <div class="dashed-line" style="margin-top: 2px;"></div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>விபரங்கள்</th>
+                <th class="qty-col">அளவு</th>
+                <th class="rate-col">விலை</th>
+                <th class="total-col">தொகை</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+          
+          <div class="dashed-line"></div>
+          
+          <div style="display: flex; justify-content: space-between; font-size: 13px;" class="bold">
+            <span>எண் : ${order.items.length}</span>
+            <span>மொத்தம் ${parseFloat(order.total_amount).toFixed(2)}</span>
+          </div>
+          
+          <div class="dashed-line"></div>
+          
+          <div class="center" style="font-size: 11px; margin-top: 4px;">பொருட்களை சரி பார்த்து எடுத்து செல்லவும்</div>
+          <div class="center" style="font-size: 11px; margin-bottom: 10px;">நன்றி மீண்டும் வருக</div>
+        </body>
+      </html>
+    `;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(htmlContent);
+      doc.close();
+      
+      iframe.onload = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+      };
+    }
   };
 
   const handleLogout = () => {
@@ -713,8 +825,15 @@ export default function AdminDashboard() {
                               ))}
                             </div>
                             
-                            {order.status === 'pending' && (
-                              <div className="mt-6 pt-6 border-t border-neutral-800/80 flex justify-end">
+                            <div className="mt-6 pt-6 border-t border-neutral-800/80 flex justify-end gap-4">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); printThermalBill(order); }}
+                                className="flex items-center gap-2 px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl transition-all border border-neutral-700"
+                              >
+                                <Printer size={20} /> Print Bill
+                              </button>
+                              
+                              {order.status === 'pending' && (
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); handleUpdateOrderStatus(order.id, 'completed'); }}
                                   disabled={loading}
@@ -722,8 +841,8 @@ export default function AdminDashboard() {
                                 >
                                   <Check size={20} strokeWidth={3} /> Mark Order as Completed
                                 </button>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}
