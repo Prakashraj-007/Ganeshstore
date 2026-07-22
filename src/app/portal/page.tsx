@@ -142,9 +142,11 @@ export default function PortalDashboard() {
 
   const setQuantityDirectly = (product: any, value: number | string) => {
     setCart(prev => {
-      if (typeof value === "number" && (value < 0 || isNaN(value))) {
+      const numValue = typeof value === 'string' && value === "" ? -1 : Number(value);
+      if (isNaN(numValue) || numValue <= 0) {
         return prev.filter(item => item.product.id !== product.id);
       }
+      
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
         return prev.map(item => item.product.id === product.id ? { ...item, quantity: value } : item);

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase"; 
 import { useEffect, useState, useRef } from "react";
-import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check, CheckCircle, AlertCircle, Edit2, X, Save, Search, Printer } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check, CheckCircle, AlertCircle, Edit2, X, Save, Search, Printer, ArrowLeft } from "lucide-react";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -35,6 +35,13 @@ export default function AdminDashboard() {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
+
+  // Hotel View State
+  const [selectedHotel, setSelectedHotel] = useState<string | null>(null);
+
+  // Bill Item Edit State
+  const [editingBillItemId, setEditingBillItemId] = useState<{orderId: string, itemIdx: number} | null>(null);
+  const [billItemEditPrice, setBillItemEditPrice] = useState<string>("");
 
   // User Form states
   const [newUserId, setNewUserId] = useState("");
@@ -246,6 +253,46 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleEditBillItemPrice = async (order: any, itemIdx: number, productId: string) => {
+    if (!billItemEditPrice) return;
+    setLoading(true);
+    try {
+      const newPrice = parseFloat(billItemEditPrice);
+      if (isNaN(newPrice)) throw new Error("Invalid price");
+
+      const updatedItems = [...order.items];
+      updatedItems[itemIdx].product.selling_price = newPrice;
+      
+      let newTotal = 0;
+      updatedItems.forEach(item => {
+        newTotal += (Number(item.quantity) || 0) * item.product.selling_price;
+      });
+
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({ items: updatedItems, total_amount: newTotal })
+        .eq('id', order.id);
+        
+      if (orderError) throw orderError;
+
+      const { error: productError } = await supabase
+        .from('products')
+        .update({ selling_price: newPrice })
+        .eq('id', productId);
+        
+      if (productError) throw productError;
+
+      setEditingBillItemId(null);
+      fetchOrders();
+      fetchProducts();
+      showToast("Price updated in bill and global catalog!");
+    } catch (err: any) {
+      showToast("Error updating price: " + err.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // --- CSV UPLOAD HANDLER ---
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -332,7 +379,10 @@ export default function AdminDashboard() {
         <head>
           <title>Print Bill - ${shortId}</title>
           <style>
-            @page { margin: 0; }
+            @page { 
+              margin: 0; 
+              size: 77mm auto; 
+            }
             body { 
               font-family: 'Arial', sans-serif; 
               font-size: 12px; 
@@ -748,25 +798,67 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             <div className="flex justify-between items-end mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">Incoming Orders</h2>
-                <p className="text-neutral-400 mt-1">Review and process your latest wholesale requests.</p>
+                <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                  {selectedHotel ? (
+                    <>
+                      <button onClick={() => setSelectedHotel(null)} className="text-neutral-400 hover:text-white transition-colors mr-2">
+                        <ArrowLeft size={24} />
+                      </button>
+                      {selectedHotel}'s Orders
+                    </>
+                  ) : (
+                    "Incoming Orders"
+                  )}
+                </h2>
+                <p className="text-neutral-400 mt-1">
+                  {selectedHotel ? `Viewing all bills submitted by ${selectedHotel}.` : "Review and process your latest wholesale requests by hotel."}
+                </p>
               </div>
               <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 bg-neutral-900 border border-neutral-800 hover:border-green-500/50 text-neutral-300 hover:text-white rounded-xl transition-all shadow-sm">
                 <Database size={16} className="text-green-500" /> Refresh
               </button>
             </div>
             
-            {orders.length === 0 ? (
-              <div className="bg-neutral-900/40 border border-neutral-800 rounded-3xl p-16 text-center backdrop-blur-xl">
-                <div className="w-24 h-24 bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-neutral-700">
-                  <ShoppingBag size={40} className="text-neutral-500" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-2">No Orders Yet</h3>
-                <p className="text-neutral-400 max-w-md mx-auto">When your clients place orders through the wholesale portal, they will magically appear right here.</p>
+            {!selectedHotel ? (
+              // HOTELS LIST
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from(new Set(orders.map(o => o.business_name))).map(hotelName => {
+                  const hotelOrders = orders.filter(o => o.business_name === hotelName);
+                  const pendingCount = hotelOrders.filter(o => o.status === 'pending').length;
+                  return (
+                    <div 
+                      key={hotelName}
+                      onClick={() => setSelectedHotel(hotelName)}
+                      className="bg-neutral-900/50 border border-neutral-800 hover:border-green-500/50 rounded-2xl p-6 cursor-pointer transition-all hover:bg-neutral-800 group"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center text-white font-black text-xl border border-neutral-700 shadow-inner">
+                          {hotelName.charAt(0).toUpperCase()}
+                        </div>
+                        {pendingCount > 0 && (
+                          <span className="bg-yellow-500/20 text-yellow-500 text-xs font-bold px-3 py-1 rounded-full border border-yellow-500/30">
+                            {pendingCount} Pending
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-1 group-hover:text-green-400 transition-colors">{hotelName}</h3>
+                      <p className="text-neutral-500 text-sm">{hotelOrders.length} Total Bills</p>
+                    </div>
+                  );
+                })}
+                {orders.length === 0 && (
+                  <div className="col-span-full bg-neutral-900/40 border border-neutral-800 rounded-3xl p-16 text-center backdrop-blur-xl">
+                    <div className="w-24 h-24 bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-neutral-700">
+                      <ShoppingBag size={40} className="text-neutral-500" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">No Hotels Yet</h3>
+                    <p className="text-neutral-400">Waiting for first orders.</p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="grid gap-4">
-                {orders.map((order) => {
+                {orders.filter(o => o.business_name === selectedHotel).map((order) => {
                   const isExpanded = expandedOrder === order.id;
                   const date = new Date(order.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
                   
@@ -814,22 +906,65 @@ export default function AdminDashboard() {
                               <ShoppingBag size={14} /> Order Contents
                             </h4>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                              {order.items.map((item: any, idx: number) => (
+                              {order.items.map((item: any, idx: number) => {
+                                const isEditing = editingBillItemId?.orderId === order.id && editingBillItemId?.itemIdx === idx;
+                                return (
                                 <div key={idx} className="flex items-center justify-between bg-neutral-900/80 border border-neutral-800/80 hover:border-neutral-700 rounded-xl p-4 transition-colors">
                                   <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-neutral-950 rounded-lg flex items-center justify-center text-white font-black border border-neutral-800 shadow-inner">
+                                    <div className="w-12 h-12 bg-neutral-950 rounded-lg flex items-center justify-center text-white font-black border border-neutral-800 shadow-inner shrink-0">
                                       {item.quantity}<span className="text-[10px] text-neutral-500 ml-0.5">x</span>
                                     </div>
-                                    <div>
-                                      <h5 className="font-bold text-white text-base">{item.product.name_tamil || item.product.name}</h5>
-                                      <p className="text-sm text-neutral-500 font-medium mt-0.5">₹{item.product.selling_price.toFixed(2)} / item</p>
+                                    <div className="min-w-0 flex-1">
+                                      <h5 className="font-bold text-white text-base truncate pr-2">{item.product.name_tamil || item.product.name}</h5>
+                                      
+                                      <div className="flex items-center mt-1">
+                                        {isEditing ? (
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-neutral-500">₹</span>
+                                            <input 
+                                              type="number"
+                                              step="0.01"
+                                              value={billItemEditPrice}
+                                              onChange={(e) => setBillItemEditPrice(e.target.value)}
+                                              className="w-20 bg-neutral-950 border border-neutral-700 rounded px-2 py-0.5 text-sm text-white focus:outline-none focus:border-green-500"
+                                              autoFocus
+                                            />
+                                            <button 
+                                              disabled={loading} 
+                                              onClick={(e) => { e.stopPropagation(); handleEditBillItemPrice(order, idx, item.product.id); }} 
+                                              className="p-1 text-green-500 hover:bg-green-500/10 rounded" title="Save"
+                                            >
+                                              <Save size={14} />
+                                            </button>
+                                            <button 
+                                              disabled={loading} 
+                                              onClick={(e) => { e.stopPropagation(); setEditingBillItemId(null); }} 
+                                              className="p-1 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded" title="Cancel"
+                                            >
+                                              <X size={14} />
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-2">
+                                            <p className="text-sm text-neutral-500 font-medium">₹{item.product.selling_price.toFixed(2)} / item</p>
+                                            <button 
+                                              onClick={(e) => { e.stopPropagation(); setEditingBillItemId({ orderId: order.id, itemIdx: idx }); setBillItemEditPrice(item.product.selling_price.toString()); }}
+                                              className="p-1.5 text-neutral-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-all bg-neutral-800/50"
+                                              title="Edit Price"
+                                            >
+                                              <Edit2 size={14} />
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                   <div className="font-black text-lg text-neutral-300">
                                     ₹{Math.round((Number(item.quantity) || 0) * item.product.selling_price)}
                                   </div>
                                 </div>
-                              ))}
+                              );
+                              })}
                             </div>
                             
                             <div className="mt-6 pt-6 border-t border-neutral-800/80 flex justify-end gap-4">
