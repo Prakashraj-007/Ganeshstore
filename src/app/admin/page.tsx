@@ -60,6 +60,8 @@ export default function AdminDashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    let channel: any = null;
+
     async function init() {
       try {
         if (supabase) {
@@ -67,12 +69,32 @@ export default function AdminDashboard() {
            fetchUsers();
            fetchProducts();
            fetchOrders();
+           
+           // Setup Realtime for auto-printing
+           channel = supabase.channel('admin-orders-auto-print')
+            .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'orders' },
+              (payload) => {
+                const newOrder = payload.new;
+                fetchOrders(); // refresh the list
+                if (newOrder && newOrder.items) {
+                  showToast(`New order from ${newOrder.business_name}! Printing...`, 'success');
+                  printThermalBill(newOrder);
+                }
+              }
+            )
+            .subscribe();
         }
       } catch (err) {
         setDbStatus("Failed to connect to Supabase");
       }
     }
     init();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchUsers = async () => {
