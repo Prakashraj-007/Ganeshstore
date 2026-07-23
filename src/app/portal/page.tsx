@@ -612,85 +612,126 @@ export default function PortalDashboard() {
       {/* My Orders Modal */}
       {showBills && (
         <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm transition-opacity" onClick={() => setShowBills(false)}></div>
-          <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all">
-            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50">
-              <h2 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+          <div className="absolute inset-0 bg-neutral-900/80 backdrop-blur-sm transition-opacity" onClick={() => setShowBills(false)}></div>
+          <div className="relative w-full max-w-3xl bg-neutral-950 rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all border border-neutral-800">
+            <div className="px-6 py-5 border-b border-neutral-800 flex items-center justify-between bg-neutral-900/50">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <History className="text-accent" /> My Orders <span className="text-sm text-neutral-400 font-normal ml-2">(Last 14 Days)</span>
               </h2>
-              <button onClick={() => setShowBills(false)} className="p-2 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-200 rounded-full transition-colors">
+              <button onClick={() => setShowBills(false)} className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
             
-            <div className="flex border-b border-neutral-200 bg-white sticky top-0 z-10">
+            <div className="flex border-b border-neutral-800 bg-neutral-950 sticky top-0 z-10">
               <button 
                 onClick={() => setOrdersTab('pending')}
-                className={`flex-1 py-4 text-sm font-bold transition-all relative ${ordersTab === 'pending' ? 'text-accent' : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50'}`}
+                className={`flex-1 py-4 text-sm font-bold transition-all relative ${ordersTab === 'pending' ? 'text-accent' : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900/50'}`}
               >
                 Pending Orders
                 {ordersTab === 'pending' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-accent"></div>}
               </button>
               <button 
                 onClick={() => setOrdersTab('completed')}
-                className={`flex-1 py-4 text-sm font-bold transition-all relative ${ordersTab === 'completed' ? 'text-green-600' : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50'}`}
+                className={`flex-1 py-4 text-sm font-bold transition-all relative ${ordersTab === 'completed' ? 'text-green-500' : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900/50'}`}
               >
                 Completed Bills
                 {ordersTab === 'completed' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-green-500"></div>}
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6 bg-neutral-50/50">
+            <div className="flex-1 overflow-y-auto p-6 bg-neutral-950">
               {loadingBills ? (
                 <div className="flex justify-center items-center h-40">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                 </div>
               ) : previousBills.filter(b => b.status === ordersTab).length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200">
-                  <FileText size={48} className="mx-auto text-neutral-300 mb-4" />
-                  <p className="text-lg font-medium text-neutral-500">No {ordersTab} orders found.</p>
+                <div className="text-center py-16 bg-neutral-900/40 rounded-2xl border border-neutral-800 backdrop-blur-xl">
+                  <FileText size={48} className="mx-auto text-neutral-600 mb-4" />
+                  <p className="text-lg font-bold text-white">No {ordersTab} orders found.</p>
                   <p className="text-sm text-neutral-400 mt-1">Check back later for updates.</p>
                 </div>
               ) : (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   {previousBills.filter(b => b.status === ordersTab).map(bill => {
                     const date = new Date(bill.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
                     return (
-                      <div key={bill.id} className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 relative overflow-hidden">
+                      <div key={bill.id} className="relative group rounded-2xl bg-gradient-to-br from-neutral-900 to-neutral-900/60 border border-neutral-800 hover:border-neutral-700 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
                         {bill.status === 'completed' && <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>}
-                        {bill.status === 'pending' && <div className="absolute top-0 left-0 w-1 h-full bg-accent"></div>}
+                        {bill.status === 'pending' && <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)]"></div>}
                         
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-5 border-b border-neutral-100">
-                          <div>
-                            <div className="flex items-center gap-3 mb-1.5">
-                              <span className="font-black text-neutral-900 text-lg">{date}</span>
-                              <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${bill.status === 'completed' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-accent/10 text-accent border-accent/20'}`}>
-                                {bill.status}
-                              </span>
+                        <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-4 mb-3">
+                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center text-white font-black text-xl border border-neutral-700 shadow-inner">
+                                B
+                              </div>
+                              <div>
+                                <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-3">
+                                  {businessName}
+                                  <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${bill.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/30' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.1)]'}`}>
+                                    {bill.status}
+                                  </span>
+                                </h3>
+                                <div className="text-sm text-neutral-400 font-medium mt-1 flex items-center gap-4">
+                                  <span>{date}</span>
+                                  <span className="w-1 h-1 rounded-full bg-neutral-700"></span>
+                                  <span>{bill.items.filter((i: any) => !isNaN(Number(i.quantity)) && Number(i.quantity) > 0).length} items</span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-sm font-medium text-neutral-500">{bill.items.length} wholesale items</div>
                           </div>
-                          <div className="text-left sm:text-right bg-neutral-50 px-4 py-2.5 rounded-xl border border-neutral-100">
-                            <div className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-0.5">Total Amount</div>
-                            <div className="text-2xl font-black text-neutral-900">₹{parseFloat(bill.total_amount).toFixed(2)}</div>
+                          
+                          <div className="text-right">
+                            <div className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">Total Amount</div>
+                            <div className="text-2xl font-black text-white">₹{parseFloat(bill.total_amount).toFixed(2)}</div>
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {bill.items.map((item: any, idx: number) => (
-                            <div key={idx} className="flex items-center justify-between bg-neutral-50 hover:bg-neutral-100 rounded-xl p-3 border border-neutral-100 transition-colors">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-white rounded flex items-center justify-center text-sm font-black text-neutral-700 shadow-sm border border-neutral-200">
-                                  {item.quantity}x
-                                </div>
-                                <div className="text-sm font-bold text-neutral-800 line-clamp-1">
-                                  {item.product.name_tamil || item.product.name}
-                                </div>
-                              </div>
-                              <div className="font-black text-neutral-900 text-sm">
-                                ₹{Math.round((Number(item.quantity) || 0) * item.product.selling_price)}
-                              </div>
+
+                        <div className="px-6 pb-6 pt-2">
+                          <div className="bg-neutral-950/50 rounded-2xl border border-neutral-800 p-5 shadow-inner">
+                            <h4 className="text-xs font-bold text-neutral-500 mb-4 uppercase tracking-widest flex items-center gap-2">
+                              <PackageOpen size={14} /> Order Contents
+                            </h4>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-sm">
+                                <thead className="text-xs text-neutral-500 uppercase tracking-widest border-b border-neutral-800">
+                                  <tr>
+                                    <th className="pb-3 font-bold">Product Name</th>
+                                    <th className="pb-3 font-bold text-center w-24">Qty</th>
+                                    <th className="pb-3 font-bold text-right w-32">Price / Unit</th>
+                                    <th className="pb-3 font-bold text-right w-32">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-800/50">
+                                  {bill.items.map((item: any, idx: number) => {
+                                    const q = Number(item.quantity);
+                                    if (isNaN(q) || q <= 0) return null;
+                                    return (
+                                      <tr key={idx} className="hover:bg-neutral-900/30 transition-colors group">
+                                      <td className="py-4 pr-4">
+                                        <div className="font-bold text-white text-base">{item.product.name_tamil || item.product.name}</div>
+                                      </td>
+                                      <td className="py-4 text-center">
+                                        <div className="inline-flex items-center justify-center px-3 py-1 bg-neutral-950 rounded-lg text-white font-black border border-neutral-800 shadow-sm">
+                                          {item.quantity}
+                                        </div>
+                                      </td>
+                                      <td className="py-4 text-right">
+                                        <span className="text-sm font-medium text-neutral-400">₹{item.product.selling_price.toFixed(2)}</span>
+                                      </td>
+                                      <td className="py-4 text-right pl-4">
+                                        <span className="font-black text-lg text-white">
+                                          ₹{Math.round((Number(item.quantity) || 0) * item.product.selling_price)}
+                                        </span>
+                                      </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
                             </div>
-                          ))}
+                          </div>
                         </div>
                       </div>
                     );

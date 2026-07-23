@@ -275,6 +275,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteOrder = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this bill?")) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from("orders").delete().eq("id", id).select();
+      if (error) {
+        showToast("Error deleting order: " + error.message, "error");
+      } else if (!data || data.length === 0) {
+        showToast("Delete blocked! Add a DELETE policy for the 'orders' table in Supabase.", "error");
+      } else {
+        fetchOrders();
+        showToast("Bill deleted successfully!");
+        if (expandedOrder === id) setExpandedOrder(null);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleEditBillItemPrice = async (order: any, itemIdx: number, productId: string) => {
     if (!billItemEditPrice) return;
     setLoading(true);
@@ -381,7 +400,12 @@ export default function AdminDashboard() {
     const timeStr = dateObj.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' });
     const shortId = order.id ? order.id.substring(0, 8).toUpperCase() : '101';
     
-    const itemsHtml = order.items.map((item: any) => {
+    const validItems = order.items.filter((item: any) => {
+      const q = Number(item.quantity);
+      return !isNaN(q) && q > 0;
+    });
+
+    const itemsHtml = validItems.map((item: any) => {
       const name = item.product.name_tamil || item.product.name;
       const qty = item.quantity;
       const price = item.product.selling_price.toFixed(2);
@@ -402,14 +426,19 @@ export default function AdminDashboard() {
           <title>Print Bill - ${shortId}</title>
           <style>
             @page { 
-              margin: 0; 
+              margin: 0;
+              margin-top: 0;
+              padding: 0;
               size: 77mm auto; 
+            }
+            html, body { 
+              margin: 0 !important; 
+              padding: 0 !important;
             }
             body { 
               font-family: 'Arial', sans-serif; 
               font-size: 12px; 
-              margin: 0; 
-              padding: 4mm; 
+              padding: 0 4mm 4mm 4mm !important; 
               width: 77mm; 
               box-sizing: border-box;
               color: #000;
@@ -436,7 +465,7 @@ export default function AdminDashboard() {
           <div class="center" style="font-size: 12px;">எண்.711, அகரம் மெயின் ரோடு</div>
           <div class="center" style="font-size: 12px;">திருவஞ்சேரி, சென்னை - 600126</div>
           <div class="center" style="font-size: 12px;">போன் : 9445236480, 7418146480</div>
-          <div class="center" style="font-size: 12px;">GSTIN : 33BJQPR7834D1ZV</div>
+          <div class="center bold" style="font-size: 14px; margin-top: 4px;">${order.business_name}</div>
           
           <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px;">
             <span>ID: ${shortId}</span>
@@ -462,7 +491,7 @@ export default function AdminDashboard() {
           <div class="dashed-line"></div>
           
           <div style="display: flex; justify-content: space-between; font-size: 14px;" class="bold">
-            <span>எண் : ${order.items.length}</span>
+            <span>எண் : ${validItems.length}</span>
             <span>மொத்தம் : ₹${parseFloat(order.total_amount).toFixed(2)}</span>
           </div>
           
@@ -905,7 +934,7 @@ export default function AdminDashboard() {
                               <div className="text-sm text-neutral-400 font-medium mt-1 flex items-center gap-4">
                                 <span>{date}</span>
                                 <span className="w-1 h-1 rounded-full bg-neutral-700"></span>
-                                <span>{order.items.length} items</span>
+                                <span>{order.items.filter((i: any) => !isNaN(Number(i.quantity)) && Number(i.quantity) > 0).length} items</span>
                               </div>
                             </div>
                           </div>
@@ -927,69 +956,92 @@ export default function AdminDashboard() {
                             <h4 className="text-xs font-bold text-neutral-500 mb-4 uppercase tracking-widest flex items-center gap-2">
                               <ShoppingBag size={14} /> Order Contents
                             </h4>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                              {order.items.map((item: any, idx: number) => {
-                                const isEditing = editingBillItemId?.orderId === order.id && editingBillItemId?.itemIdx === idx;
-                                return (
-                                <div key={idx} className="flex items-center justify-between bg-neutral-900/80 border border-neutral-800/80 hover:border-neutral-700 rounded-xl p-4 transition-colors">
-                                  <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-neutral-950 rounded-lg flex items-center justify-center text-white font-black border border-neutral-800 shadow-inner shrink-0">
-                                      {item.quantity}<span className="text-[10px] text-neutral-500 ml-0.5">x</span>
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <h5 className="font-bold text-white text-base truncate pr-2">{item.product.name_tamil || item.product.name}</h5>
-                                      
-                                      <div className="flex items-center mt-1">
-                                        {isEditing ? (
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-neutral-500">₹</span>
-                                            <input 
-                                              type="number"
-                                              step="0.01"
-                                              value={billItemEditPrice}
-                                              onChange={(e) => setBillItemEditPrice(e.target.value)}
-                                              className="w-20 bg-neutral-950 border border-neutral-700 rounded px-2 py-0.5 text-sm text-white focus:outline-none focus:border-green-500"
-                                              autoFocus
-                                            />
-                                            <button 
-                                              disabled={loading} 
-                                              onClick={(e) => { e.stopPropagation(); handleEditBillItemPrice(order, idx, item.product.id); }} 
-                                              className="p-1 text-green-500 hover:bg-green-500/10 rounded" title="Save"
-                                            >
-                                              <Save size={14} />
-                                            </button>
-                                            <button 
-                                              disabled={loading} 
-                                              onClick={(e) => { e.stopPropagation(); setEditingBillItemId(null); }} 
-                                              className="p-1 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded" title="Cancel"
-                                            >
-                                              <X size={14} />
-                                            </button>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-sm">
+                                <thead className="text-xs text-neutral-500 uppercase tracking-widest border-b border-neutral-800">
+                                  <tr>
+                                    <th className="pb-3 font-bold">Product Name</th>
+                                    <th className="pb-3 font-bold text-center w-24">Qty</th>
+                                    <th className="pb-3 font-bold text-right w-32">Price / Unit</th>
+                                    <th className="pb-3 font-bold text-right w-32">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-800/50">
+                                  {order.items.map((item: any, idx: number) => {
+                                    const q = Number(item.quantity);
+                                    if (isNaN(q) || q <= 0) return null;
+                                    const isEditing = editingBillItemId?.orderId === order.id && editingBillItemId?.itemIdx === idx;
+                                    return (
+                                      <tr key={idx} className="hover:bg-neutral-900/30 transition-colors group">
+                                        <td className="py-4 pr-4">
+                                          <div className="font-bold text-white text-base">{item.product.name_tamil || item.product.name}</div>
+                                        </td>
+                                        <td className="py-4 text-center">
+                                          <div className="inline-flex items-center justify-center px-3 py-1 bg-neutral-950 rounded-lg text-white font-black border border-neutral-800 shadow-sm">
+                                            {item.quantity}
                                           </div>
-                                        ) : (
-                                          <div className="flex items-center gap-2">
-                                            <p className="text-sm text-neutral-500 font-medium">₹{item.product.selling_price.toFixed(2)} / item</p>
-                                            <button 
-                                              onClick={(e) => { e.stopPropagation(); setEditingBillItemId({ orderId: order.id, itemIdx: idx }); setBillItemEditPrice(item.product.selling_price.toString()); }}
-                                              className="p-1.5 text-neutral-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-all bg-neutral-800/50"
-                                              title="Edit Price"
-                                            >
-                                              <Edit2 size={14} />
-                                            </button>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="font-black text-lg text-neutral-300">
-                                    ₹{Math.round((Number(item.quantity) || 0) * item.product.selling_price)}
-                                  </div>
-                                </div>
-                              );
-                              })}
+                                        </td>
+                                        <td className="py-4 text-right">
+                                          {isEditing ? (
+                                            <div className="flex items-center justify-end gap-2">
+                                              <span className="text-neutral-500">₹</span>
+                                              <input 
+                                                type="number"
+                                                step="0.01"
+                                                value={billItemEditPrice}
+                                                onChange={(e) => setBillItemEditPrice(e.target.value)}
+                                                className="w-20 bg-neutral-950 border border-neutral-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-green-500"
+                                                autoFocus
+                                              />
+                                              <button 
+                                                disabled={loading} 
+                                                onClick={(e) => { e.stopPropagation(); handleEditBillItemPrice(order, idx, item.product.id); }} 
+                                                className="p-1.5 text-green-500 hover:bg-green-500/10 rounded-lg" title="Save"
+                                              >
+                                                <Save size={14} />
+                                              </button>
+                                              <button 
+                                                disabled={loading} 
+                                                onClick={(e) => { e.stopPropagation(); setEditingBillItemId(null); }} 
+                                                className="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg" title="Cancel"
+                                              >
+                                                <X size={14} />
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center justify-end gap-2">
+                                              <span className="text-sm font-medium text-neutral-400">₹{item.product.selling_price.toFixed(2)}</span>
+                                              <button 
+                                                onClick={(e) => { e.stopPropagation(); setEditingBillItemId({ orderId: order.id, itemIdx: idx }); setBillItemEditPrice(item.product.selling_price.toString()); }}
+                                                className="p-1.5 text-neutral-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                title="Edit Price"
+                                              >
+                                                <Edit2 size={14} />
+                                              </button>
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td className="py-4 text-right pl-4">
+                                          <span className="font-black text-lg text-white">
+                                            ₹{Math.round((Number(item.quantity) || 0) * item.product.selling_price)}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
                             </div>
                             
                             <div className="mt-6 pt-6 border-t border-neutral-800/80 flex justify-end gap-4">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDeleteOrder(order.id); }}
+                                disabled={loading}
+                                className="flex items-center gap-2 px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold rounded-xl transition-all border border-red-500/20 disabled:opacity-50"
+                              >
+                                <Trash2 size={20} /> Delete Bill
+                              </button>
+
                               <button 
                                 onClick={(e) => { e.stopPropagation(); printThermalBill(order); }}
                                 className="flex items-center gap-2 px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl transition-all border border-neutral-700"
