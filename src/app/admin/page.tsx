@@ -465,6 +465,7 @@ export default function AdminDashboard() {
         @media print {
           @page {
             margin: 0;
+            size: 78mm auto;
           }
           body {
             margin: 0 !important;
