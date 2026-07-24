@@ -825,7 +825,7 @@ export default function AdminDashboard() {
                   {selectedHotel ? `Viewing all bills submitted by ${selectedHotel}.` : "Review and process your latest wholesale requests by hotel."}
                 </p>
               </div>
-              <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 bg-neutral-900 border border-neutral-800 hover:border-green-500/50 text-neutral-300 hover:text-white rounded-xl transition-all shadow-sm">
+              <button onClick={() => fetchOrders(false)} className="flex items-center gap-2 px-4 py-2 bg-neutral-900 border border-neutral-800 hover:border-green-500/50 text-neutral-300 hover:text-white rounded-xl transition-all shadow-sm">
                 <Database size={16} className="text-green-500" /> Refresh
               </button>
             </div>
