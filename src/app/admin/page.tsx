@@ -479,14 +479,13 @@ export default function AdminDashboard() {
 <meta charset="UTF-8"/>
 <style>
   @page {
-    size: 80mm 297mm;
+    size: 80mm auto;
     margin: 0mm;
   }
   html, body {
     margin: 0px !important;
     padding: 0px !important;
-    width: 80mm !important;
-    height: auto !important;
+    width: 100% !important;
     background: #fff;
   }
   body {
@@ -496,8 +495,10 @@ export default function AdminDashboard() {
   }
   .print-container {
     width: 100%;
-    padding: 0;
-    margin: 0;
+    max-width: 80mm;
+    margin: 0 auto;
+    padding: 0 4mm;
+    box-sizing: border-box;
     overflow: hidden;
   }
   .center { text-align: center; }
