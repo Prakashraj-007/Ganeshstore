@@ -1106,6 +1106,7 @@ export default function AdminDashboard() {
       <>
         <style dangerouslySetInnerHTML={{ __html: `
           @page {
+            size: 80mm auto !important;
             margin: 0mm !important;
           }
           @media print {
