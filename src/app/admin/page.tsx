@@ -473,13 +473,16 @@ export default function AdminDashboard() {
 
     const totalAmt = parseFloat(order.total_amount || 0).toFixed(2);
 
+    // Calculate dynamic page height based on items to avoid top/bottom margins on fixed page sizes
+    const pageHeight = 55 + (validItems.length * 8) + 35 + 15;
+
     const receiptHtml = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8"/>
 <style>
   @page {
-    size: 80mm auto;
+    size: 80mm ${pageHeight}mm;
     margin: 0mm;
   }
   html, body {
