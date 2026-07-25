@@ -478,9 +478,27 @@ export default function AdminDashboard() {
 <head>
 <meta charset="UTF-8"/>
 <style>
-  @page { margin: 0mm; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 12px; color: #000; background: #fff; width: 78mm; }
+  @page {
+    size: 80mm 297mm;
+    margin: 0mm;
+  }
+  html, body {
+    margin: 0px !important;
+    padding: 0px !important;
+    width: 80mm !important;
+    background: #fff;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: #000;
+  }
+  .print-container {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
   .center { text-align: center; }
   .bold { font-weight: bold; }
   .divider { border-top: 1px dashed #000; margin: 4px 0; }
@@ -489,36 +507,38 @@ export default function AdminDashboard() {
 </style>
 </head>
 <body>
-  <div class="center" style="font-size:11px;">ஸ்ரீ பத்ரகாளியம்மன் துணை</div>
-  <div class="center bold" style="font-size:16px;margin:2px 0;">நியூ கணேஷ் ஸ்டோர்</div>
-  <div class="center">எண்.711, அகரம் மெயின் ரோடு</div>
-  <div class="center">திருவஞ்சேரி, சென்னை - 600126</div>
-  <div class="center">போன் : 9445236480, 7418146480</div>
-  <div class="center bold" style="font-size:14px;margin-top:4px;">${order.business_name}</div>
-  <div style="display:flex;justify-content:space-between;margin-top:6px;">
-    <span>ID: ${shortId}</span>
-    <span>${dateStr} ${timeStr}</span>
+  <div class="print-container">
+    <div class="center" style="font-size:11px;">ஸ்ரீ பத்ரகாளியம்மன் துணை</div>
+    <div class="center bold" style="font-size:16px;margin:2px 0;">நியூ கணேஷ் ஸ்டோர்</div>
+    <div class="center">எண்.711, அகரம் மெயின் ரோடு</div>
+    <div class="center">திருவஞ்சேரி, சென்னை - 600126</div>
+    <div class="center">போன் : 9445236480, 7418146480</div>
+    <div class="center bold" style="font-size:14px;margin-top:4px;">${order.business_name}</div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px;">
+      <span>ID: ${shortId}</span>
+      <span>${dateStr} ${timeStr}</span>
+    </div>
+    <div class="divider"></div>
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left;width:44%;padding:3px 0;border-bottom:1px dashed #000;">விபரங்கள்</th>
+          <th style="text-align:center;width:14%;padding:3px 0;border-bottom:1px dashed #000;">அளவு</th>
+          <th style="text-align:right;width:20%;padding:3px 0;border-bottom:1px dashed #000;">விலை</th>
+          <th style="text-align:right;width:22%;padding:3px 0;border-bottom:1px dashed #000;">தொகை</th>
+        </tr>
+      </thead>
+      <tbody>${itemsHtml}</tbody>
+    </table>
+    <div class="divider"></div>
+    <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;">
+      <span>எண் : ${validItems.length}</span>
+      <span>மொத்தம் : ₹${totalAmt}</span>
+    </div>
+    <div class="divider"></div>
+    <div class="center" style="margin-top:5px;">பொருட்களை சரி பார்த்து எடுத்து செல்லவும்</div>
+    <div class="center" style="margin-bottom:8px;">நன்றி மீண்டும் வருக</div>
   </div>
-  <div class="divider"></div>
-  <table>
-    <thead>
-      <tr>
-        <th style="text-align:left;width:44%;padding:3px 0;border-bottom:1px dashed #000;">விபரங்கள்</th>
-        <th style="text-align:center;width:14%;padding:3px 0;border-bottom:1px dashed #000;">அளவு</th>
-        <th style="text-align:right;width:20%;padding:3px 0;border-bottom:1px dashed #000;">விலை</th>
-        <th style="text-align:right;width:22%;padding:3px 0;border-bottom:1px dashed #000;">தொகை</th>
-      </tr>
-    </thead>
-    <tbody>${itemsHtml}</tbody>
-  </table>
-  <div class="divider"></div>
-  <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;">
-    <span>எண் : ${validItems.length}</span>
-    <span>மொத்தம் : ₹${totalAmt}</span>
-  </div>
-  <div class="divider"></div>
-  <div class="center" style="margin-top:5px;">பொருட்களை சரி பார்த்து எடுத்து செல்லவும்</div>
-  <div class="center" style="margin-bottom:8px;">நன்றி மீண்டும் வருக</div>
 </body>
 </html>`;
 
@@ -529,10 +549,19 @@ export default function AdminDashboard() {
     popup.document.write(receiptHtml);
     popup.document.close();
     popup.focus();
-    setTimeout(() => {
+
+    const runPrint = () => {
       popup.print();
-      setTimeout(() => popup.close(), 500);
-    }, 300);
+      setTimeout(() => {
+        popup.close();
+      }, 500);
+    };
+
+    if (popup.document.readyState === 'complete') {
+      setTimeout(runPrint, 1000);
+    } else {
+      popup.onload = () => setTimeout(runPrint, 1000);
+    }
   };
 
   const handleLogout = () => {
