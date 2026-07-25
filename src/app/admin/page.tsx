@@ -141,8 +141,9 @@ export default function AdminDashboard() {
       if (data && data.length > 0) {
         setOrders(data);
         
-        if (!isInitial && latestOrderRef.current) {
-          const newOrders = data.filter((o: any) => o.created_at > latestOrderRef.current!);
+        if (!isInitial) {
+          const lastTime = latestOrderRef.current || '1970-01-01T00:00:00.000Z';
+          const newOrders = data.filter((o: any) => o.created_at > lastTime);
           if (newOrders.length > 0) {
             newOrders.reverse().forEach((newOrder: any, index: number) => {
               setTimeout(() => {
@@ -467,7 +468,7 @@ export default function AdminDashboard() {
             margin: 0;
             size: 78mm auto;
           }
-          body {
+          html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
@@ -479,11 +480,16 @@ export default function AdminDashboard() {
           /* Show print section */
           #print-section {
             display: block !important;
-            width: 78mm;
-            margin: 0;
-            padding: 0;
+            width: 78mm !important;
+            max-width: 78mm !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            margin: 0 !important;
+            padding: 0 4mm !important;
             font-family: 'Arial', sans-serif;
             color: black;
+            box-sizing: border-box;
           }
         }
         @media screen {
