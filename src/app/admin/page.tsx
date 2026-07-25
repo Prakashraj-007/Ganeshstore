@@ -471,9 +471,17 @@ export default function AdminDashboard() {
           html, body {
             margin: 0 !important;
             padding: 0 !important;
-            background: white !important;
             width: 100% !important;
             height: auto !important;
+            min-height: 0 !important;
+            display: block !important;
+            background: white !important;
+          }
+          main {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            min-height: 0 !important;
           }
           /* Hide all UI elements */
           #admin-ui {
@@ -1050,7 +1058,7 @@ export default function AdminDashboard() {
     {/* PRINT SECTION */}
     {printOrder && (
       <div id="print-section">
-        <div style={{ textAlign: 'center', fontSize: '11px', marginTop: '2px' }}>ஸ்ரீ பத்ரகாளியம்மன் துணை</div>
+        <div style={{ textAlign: 'center', fontSize: '11px' }}>ஸ்ரீ பத்ரகாளியம்மன் துணை</div>
         <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', margin: '2px 0' }}>நியூ கணேஷ் ஸ்டோர்</div>
         <div style={{ textAlign: 'center', fontSize: '12px' }}>எண்.711, அகரம் மெயின் ரோடு</div>
         <div style={{ textAlign: 'center', fontSize: '12px' }}>திருவஞ்சேரி, சென்னை - 600126</div>
