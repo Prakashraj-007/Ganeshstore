@@ -482,7 +482,6 @@ export default function AdminDashboard() {
 <meta charset="UTF-8"/>
 <style>
   @page {
-    size: 80mm ${pageHeight}mm;
     margin: 0mm;
   }
   html, body {
