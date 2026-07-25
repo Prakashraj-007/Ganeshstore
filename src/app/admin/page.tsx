@@ -465,8 +465,7 @@ export default function AdminDashboard() {
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           @page {
-            margin: 0;
-            size: auto;
+            margin: 0mm !important;
           }
           html, body {
             margin: 0 !important;
