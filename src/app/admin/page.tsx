@@ -466,12 +466,14 @@ export default function AdminDashboard() {
         @media print {
           @page {
             margin: 0;
-            size: 78mm auto;
+            size: auto;
           }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
+            width: 100% !important;
+            height: auto !important;
           }
           /* Hide all UI elements */
           #admin-ui {
@@ -480,13 +482,9 @@ export default function AdminDashboard() {
           /* Show print section */
           #print-section {
             display: block !important;
-            width: 78mm !important;
-            max-width: 78mm !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
+            width: 100% !important;
             margin: 0 !important;
-            padding: 0 4mm !important;
+            padding: 0 !important;
             font-family: 'Arial', sans-serif;
             color: black;
             box-sizing: border-box;
