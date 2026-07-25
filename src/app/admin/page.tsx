@@ -65,6 +65,27 @@ export default function AdminDashboard() {
   // Track the latest order time to detect new orders during polling
   const latestOrderRef = useRef<string | null>(null);
 
+  // Auto Print State
+  const [autoPrint, setAutoPrint] = useState<boolean>(true);
+  const autoPrintRef = useRef<boolean>(true);
+
+  // Initialize autoPrint state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("adminAutoPrint");
+    if (saved !== null) {
+      const val = saved === "true";
+      setAutoPrint(val);
+      autoPrintRef.current = val;
+    }
+  }, []);
+
+  const handleToggleAutoPrint = (val: boolean) => {
+    setAutoPrint(val);
+    autoPrintRef.current = val;
+    localStorage.setItem("adminAutoPrint", String(val));
+    showToast(`Auto-printing ${val ? 'enabled' : 'disabled'}`, 'success');
+  };
+
   useEffect(() => {
     let channel: any = null;
     let pollInterval: NodeJS.Timeout;
@@ -146,10 +167,14 @@ export default function AdminDashboard() {
           const newOrders = data.filter((o: any) => o.created_at > lastTime);
           if (newOrders.length > 0) {
             newOrders.reverse().forEach((newOrder: any, index: number) => {
-              setTimeout(() => {
-                showToast(`New order from ${newOrder.business_name}! Auto-printing...`, 'success');
-                printThermalBill(newOrder);
-              }, index * 2000);
+              if (autoPrintRef.current) {
+                setTimeout(() => {
+                  showToast(`New order from ${newOrder.business_name}! Auto-printing...`, 'success');
+                  printThermalBill(newOrder);
+                }, index * 2000);
+              } else {
+                showToast(`New order from ${newOrder.business_name}!`, 'success');
+              }
             });
           }
         }
@@ -639,6 +664,29 @@ export default function AdminDashboard() {
               Total {activeTab === 'users' ? 'Business Users' : activeTab === 'products' ? 'Products' : 'Orders'}
             </h3>
             <p className="text-4xl font-bold text-white">{activeTab === 'users' ? businessUsers.length : activeTab === 'products' ? products.length : orders.length}</p>
+          </div>
+
+          <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl flex flex-col justify-between">
+            <h3 className="text-neutral-400 text-sm font-medium mb-4 flex items-center gap-2">
+              <Printer size={16} className={autoPrint ? "text-green-500 animate-pulse" : "text-neutral-500"} /> Auto Print Receipt
+            </h3>
+            <div className="flex items-center justify-between">
+              <span className={`text-lg font-semibold transition-colors ${autoPrint ? 'text-green-500' : 'text-neutral-400'}`}>
+                {autoPrint ? 'On (Auto)' : 'Off (Manual)'}
+              </span>
+              <button
+                onClick={() => handleToggleAutoPrint(!autoPrint)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                  autoPrint ? 'bg-green-500' : 'bg-neutral-700'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    autoPrint ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
         </div>
 
