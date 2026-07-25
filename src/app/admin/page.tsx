@@ -423,10 +423,10 @@ export default function AdminDashboard() {
 
   const printThermalBill = (order: any) => {
     const dateObj = new Date(order.created_at);
-    const dateStr = dateObj.toLocaleDateString('en-GB'); // DD/MM/YYYY
+    const dateStr = dateObj.toLocaleDateString('en-GB');
     const timeStr = dateObj.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' });
     const shortId = order.id ? order.id.substring(0, 8).toUpperCase() : '101';
-    
+
     const validItems = order.items.filter((item: any) => {
       const q = Number(item.quantity);
       return !isNaN(q) && q > 0;
@@ -439,20 +439,75 @@ export default function AdminDashboard() {
       const total = (qty * item.product.selling_price).toFixed(2);
       return `
         <tr>
-          <td class="item-col" style="padding: 4px 0; word-wrap: break-word;">${name}</td>
-          <td class="qty-col" style="padding: 4px 0;">${qty}</td>
-          <td class="rate-col" style="padding: 4px 0;">${price}</td>
-          <td class="total-col" style="padding: 4px 0;">${total}</td>
-        </tr>
-      `;
+          <td style="padding:3px 2px 3px 0;font-size:12px;word-break:break-word;vertical-align:top;">${name}</td>
+          <td style="padding:3px 0;font-size:12px;text-align:center;vertical-align:top;">${qty}</td>
+          <td style="padding:3px 0;font-size:12px;text-align:right;vertical-align:top;">${price}</td>
+          <td style="padding:3px 0;font-size:12px;text-align:right;vertical-align:top;">${total}</td>
+        </tr>`;
     }).join('');
 
-    setPrintOrder({ ...order, itemsHtml, validItems, dateStr, timeStr, shortId });
-    
-    // Give React time to render the print section, then call print
+    const totalAmt = parseFloat(order.total_amount || 0).toFixed(2);
+
+    const receiptHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<style>
+  @page { margin: 0mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #000; background: #fff; width: 78mm; }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .divider { border-top: 1px dashed #000; margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { font-size: 12px; }
+</style>
+</head>
+<body>
+  <div class="center" style="font-size:11px;">ஸ்ரீ பத்ரகாளியம்மன் துணை</div>
+  <div class="center bold" style="font-size:16px;margin:2px 0;">நியூ கணேஷ் ஸ்டோர்</div>
+  <div class="center">எண்.711, அகரம் மெயின் ரோடு</div>
+  <div class="center">திருவஞ்சேரி, சென்னை - 600126</div>
+  <div class="center">போன் : 9445236480, 7418146480</div>
+  <div class="center bold" style="font-size:14px;margin-top:4px;">${order.business_name}</div>
+  <div style="display:flex;justify-content:space-between;margin-top:6px;">
+    <span>ID: ${shortId}</span>
+    <span>${dateStr} ${timeStr}</span>
+  </div>
+  <div class="divider"></div>
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:left;width:44%;padding:3px 0;border-bottom:1px dashed #000;">விபரங்கள்</th>
+        <th style="text-align:center;width:14%;padding:3px 0;border-bottom:1px dashed #000;">அளவு</th>
+        <th style="text-align:right;width:20%;padding:3px 0;border-bottom:1px dashed #000;">விலை</th>
+        <th style="text-align:right;width:22%;padding:3px 0;border-bottom:1px dashed #000;">தொகை</th>
+      </tr>
+    </thead>
+    <tbody>${itemsHtml}</tbody>
+  </table>
+  <div class="divider"></div>
+  <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;">
+    <span>எண் : ${validItems.length}</span>
+    <span>மொத்தம் : ₹${totalAmt}</span>
+  </div>
+  <div class="divider"></div>
+  <div class="center" style="margin-top:5px;">பொருட்களை சரி பார்த்து எடுத்து செல்லவும்</div>
+  <div class="center" style="margin-bottom:8px;">நன்றி மீண்டும் வருக</div>
+</body>
+</html>`;
+
+    // Open a clean popup, write the receipt, and print — zero layout interference
+    const popup = window.open('', '_blank', 'width=400,height=600');
+    if (!popup) return;
+    popup.document.open();
+    popup.document.write(receiptHtml);
+    popup.document.close();
+    popup.focus();
     setTimeout(() => {
-      window.print();
-    }, 500);
+      popup.print();
+      setTimeout(() => popup.close(), 500);
+    }, 300);
   };
 
   const handleLogout = () => {

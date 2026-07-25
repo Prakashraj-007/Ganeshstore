@@ -3,7 +3,7 @@ echo Closing all running Google Chrome instances...
 taskkill /F /IM chrome.exe /T >nul 2>&1
 
 echo Starting Chrome in Kiosk Printing Mode...
-start chrome --kiosk-printing "http://localhost:3000/admin"
+start chrome --kiosk-printing --disable-popup-blocking "http://localhost:3000/admin"
 
 echo.
 echo Chrome has been launched! 
