@@ -29,7 +29,7 @@ export default function Hero() {
           sizes="100vw"
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-dark/95 via-primary/85 to-primary-dark/70" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-dark/65 via-primary/45 to-primary-dark/25" />
       </div>
 
       <div className="mx-auto max-w-7xl px-4 pb-24 pt-40 sm:px-6 sm:pt-48 lg:px-8 lg:pb-32">
