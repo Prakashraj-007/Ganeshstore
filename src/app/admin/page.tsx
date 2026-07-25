@@ -486,6 +486,7 @@ export default function AdminDashboard() {
     margin: 0px !important;
     padding: 0px !important;
     width: 80mm !important;
+    height: auto !important;
     background: #fff;
   }
   body {
