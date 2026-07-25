@@ -1105,6 +1105,9 @@ export default function AdminDashboard() {
     {printOrder && typeof window !== 'undefined' && createPortal(
       <>
         <style dangerouslySetInnerHTML={{ __html: `
+          @page {
+            margin: 0mm !important;
+          }
           @media print {
             /* Hide the main Next.js wrapper and everything else */
             body > *:not(#print-section) {
@@ -1112,14 +1115,11 @@ export default function AdminDashboard() {
             }
             
             html, body {
+              display: block !important;
               margin: 0 !important;
               padding: 0 !important;
               width: 80mm !important;
               background: #fff !important;
-            }
-
-            @page {
-              margin: 0mm !important;
             }
 
             #print-section {
