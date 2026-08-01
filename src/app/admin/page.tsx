@@ -84,8 +84,15 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (printOrder) {
       const timer = setTimeout(() => {
+        window.scrollTo(0, 0);
+        const cleanup = () => {
+          setPrintOrder(null);
+          window.onafterprint = null;
+        };
+        window.onafterprint = cleanup;
         window.print();
-        setPrintOrder(null);
+        // Fallback if onafterprint never fires (some drivers/dialog-less print)
+        setTimeout(cleanup, 2000);
       }, 500); // Allow React to render the portal content first
       return () => clearTimeout(timer);
     }
@@ -510,9 +517,12 @@ export default function AdminDashboard() {
           #admin-ui {
             display: none !important;
           }
-          /* Show print section */
+          /* Pin receipt to top — avoids blank feed from tall admin page above portal */
           #print-section {
             display: block !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -1125,6 +1135,9 @@ export default function AdminDashboard() {
 
             #print-section {
               display: block !important;
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
               width: 100% !important;
               margin: 0 !important;
               padding: 0 4mm !important;
