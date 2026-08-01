@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase"; 
 import { useEffect, useState, useRef } from "react";
-import { createPortal } from "react-dom";
 import { LogOut, LayoutDashboard, Users, Settings, Database, Plus, Trash2, Package, Upload, ShoppingBag, ChevronDown, ChevronUp, Check, CheckCircle, AlertCircle, Edit2, X, Save, Search, Printer, ArrowLeft } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -23,8 +22,6 @@ export default function AdminDashboard() {
   const [editPrice, setEditPrice] = useState<string>("");
   const [productSearch, setProductSearch] = useState("");
   
-  // Print State
-  const [printOrder, setPrintOrder] = useState<any>(null);
   
   // User Edit State
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -79,24 +76,6 @@ export default function AdminDashboard() {
       autoPrintRef.current = val;
     }
   }, []);
-
-  // Handle printing when printOrder state is set
-  useEffect(() => {
-    if (printOrder) {
-      const timer = setTimeout(() => {
-        window.scrollTo(0, 0);
-        const cleanup = () => {
-          setPrintOrder(null);
-          window.onafterprint = null;
-        };
-        window.onafterprint = cleanup;
-        window.print();
-        // Fallback if onafterprint never fires (some drivers/dialog-less print)
-        setTimeout(cleanup, 2000);
-      }, 500); // Allow React to render the portal content first
-      return () => clearTimeout(timer);
-    }
-  }, [printOrder]);
 
   const handleToggleAutoPrint = (val: boolean) => {
     setAutoPrint(val);
@@ -476,14 +455,113 @@ export default function AdminDashboard() {
       return !isNaN(q) && q > 0;
     });
 
-    // Populate the printOrder state to trigger printing on the main window via React Portal
-    setPrintOrder({
-      ...order,
-      dateStr,
-      timeStr,
-      shortId,
-      validItems
-    });
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    const itemRows = validItems
+      .map((item: any) => {
+        const name = escapeHtml(item.product.name_tamil || item.product.name);
+        const qty = item.quantity;
+        const price = item.product.selling_price.toFixed(2);
+        const total = (qty * item.product.selling_price).toFixed(2);
+        return `<tr>
+          <td style="text-align:left;padding:4px 2px 4px 0;word-wrap:break-word;font-size:12px;vertical-align:top">${name}</td>
+          <td style="text-align:center;padding:4px 0;font-size:12px;vertical-align:top">${qty}</td>
+          <td style="text-align:right;padding:4px 0;font-size:12px;vertical-align:top">${price}</td>
+          <td style="text-align:right;padding:4px 0;font-size:12px;vertical-align:top">${total}</td>
+        </tr>`;
+      })
+      .join("");
+
+    const receiptHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Receipt ${shortId}</title>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 80mm;
+      background: #fff;
+      color: #000;
+      font-family: Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 0; }
+  </style>
+</head>
+<body>
+  <div style="text-align:center;font-size:11px">ஸ்ரீ பத்ரகாளியம்மன் துணை</div>
+  <div style="text-align:center;font-weight:bold;font-size:16px;margin:2px 0">நியூ கணேஷ் ஸ்டோர்</div>
+  <div style="text-align:center;font-size:12px">எண்.711, அகரம் மெயின் ரோடு</div>
+  <div style="text-align:center;font-size:12px">திருவஞ்சேரி, சென்னை - 600126</div>
+  <div style="text-align:center;font-size:12px">போன் : 9445236480, 7418146480</div>
+  <div style="text-align:center;font-weight:bold;font-size:14px;margin-top:4px">${escapeHtml(order.business_name || "")}</div>
+  <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px">
+    <span>ID: ${shortId}</span>
+    <span>${dateStr} ${timeStr}</span>
+  </div>
+  <div style="border-top:1px dashed #000;margin:4px 0"></div>
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:left;width:45%;padding:4px 0;border-bottom:1px dashed #000;font-size:12px">விபரங்கள்</th>
+        <th style="text-align:center;width:15%;padding:4px 0;border-bottom:1px dashed #000;font-size:12px">அளவு</th>
+        <th style="text-align:right;width:18%;padding:4px 0;border-bottom:1px dashed #000;font-size:12px">விலை</th>
+        <th style="text-align:right;width:22%;padding:4px 0;border-bottom:1px dashed #000;font-size:12px">தொகை</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+  <div style="border-top:1px dashed #000;margin:4px 0"></div>
+  <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold">
+    <span>எண் : ${validItems.length}</span>
+    <span>மொத்தம் : ₹${parseFloat(order.total_amount || 0).toFixed(2)}</span>
+  </div>
+  <div style="border-top:1px dashed #000;margin:4px 0"></div>
+  <div style="text-align:center;font-size:12px;margin-top:6px">பொருட்களை சரி பார்த்து எடுத்து செல்லவும்</div>
+  <div style="text-align:center;font-size:12px;margin-bottom:10px">நன்றி மீண்டும் வருக</div>
+</body>
+</html>`;
+
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const iframeWindow = iframe.contentWindow;
+    const iframeDoc = iframe.contentDocument || iframeWindow?.document;
+    if (!iframeWindow || !iframeDoc) {
+      document.body.removeChild(iframe);
+      showToast("Unable to open print frame.", "error");
+      return;
+    }
+
+    iframeDoc.open();
+    iframeDoc.write(receiptHtml);
+    iframeDoc.close();
+
+    const cleanup = () => {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      iframeWindow.onafterprint = null;
+    };
+
+    iframeWindow.onafterprint = cleanup;
+    iframeWindow.focus();
+    iframeWindow.print();
+    setTimeout(cleanup, 3000);
   };
 
   const handleLogout = () => {
@@ -493,51 +571,6 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{__html: `
-        @media print {
-          @page {
-            margin: 0mm !important;
-          }
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            height: auto !important;
-            min-height: 0 !important;
-            display: block !important;
-            background: white !important;
-          }
-          main {
-            display: block !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            min-height: 0 !important;
-          }
-          /* Hide all UI elements */
-          #admin-ui {
-            display: none !important;
-          }
-          /* Pin receipt to top — avoids blank feed from tall admin page above portal */
-          #print-section {
-            display: block !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            font-family: 'Arial', sans-serif;
-            color: black;
-            box-sizing: border-box;
-          }
-        }
-        @media screen {
-          #print-section {
-            display: none !important;
-          }
-        }
-      `}} />
-
     <div id="admin-ui" className="min-h-screen bg-neutral-950 flex flex-col md:flex-row">
       {/* Sidebar */}
       <aside className="w-full md:w-64 bg-neutral-900/50 border-r border-neutral-800 flex flex-col backdrop-blur-xl">
@@ -1110,101 +1143,6 @@ export default function AdminDashboard() {
         </div>
       )}
     </div>
-
-    {/* PRINT SECTION */}
-    {printOrder && typeof window !== 'undefined' && createPortal(
-      <>
-        <style dangerouslySetInnerHTML={{ __html: `
-          @page {
-            size: 80mm auto !important;
-            margin: 0mm !important;
-          }
-          @media print {
-            /* Hide the main Next.js wrapper and everything else */
-            body > *:not(#print-section) {
-              display: none !important;
-            }
-            
-            html, body {
-              display: block !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 80mm !important;
-              background: #fff !important;
-            }
-
-            #print-section {
-              display: block !important;
-              position: fixed !important;
-              top: 0 !important;
-              left: 0 !important;
-              width: 100% !important;
-              margin: 0 !important;
-              padding: 0 4mm !important;
-              box-sizing: border-box !important;
-              color: #000 !important;
-              background: #fff !important;
-              font-family: Arial, sans-serif !important;
-            }
-          }
-        ` }} />
-        <div id="print-section">
-          <div style={{ textAlign: 'center', fontSize: '11px' }}>ஸ்ரீ பத்ரகாளியம்மன் துணை</div>
-          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', margin: '2px 0' }}>நியூ கணேஷ் ஸ்டோர்</div>
-          <div style={{ textAlign: 'center', fontSize: '12px' }}>எண்.711, அகரம் மெயின் ரோடு</div>
-          <div style={{ textAlign: 'center', fontSize: '12px' }}>திருவஞ்சேரி, சென்னை - 600126</div>
-          <div style={{ textAlign: 'center', fontSize: '12px' }}>போன் : 9445236480, 7418146480</div>
-          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px', marginTop: '4px' }}>{printOrder.business_name}</div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '12px' }}>
-            <span>ID: {printOrder.shortId}</span>
-            <span>{printOrder.dateStr} {printOrder.timeStr}</span>
-          </div>
-          
-          <div style={{ borderTop: '1px dashed #000', margin: '4px 0' }}></div>
-          
-          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', width: '45%', padding: '4px 0', borderBottom: '1px dashed #000', fontSize: '12px' }}>விபரங்கள்</th>
-                <th style={{ textAlign: 'center', width: '15%', padding: '4px 0', borderBottom: '1px dashed #000', fontSize: '12px' }}>அளவு</th>
-                <th style={{ textAlign: 'right', width: '18%', padding: '4px 0', borderBottom: '1px dashed #000', fontSize: '12px' }}>விலை</th>
-                <th style={{ textAlign: 'right', width: '22%', padding: '4px 0', borderBottom: '1px dashed #000', fontSize: '12px' }}>தொகை</th>
-              </tr>
-            </thead>
-            <tbody>
-              {printOrder.validItems?.map((item: any, idx: number) => {
-                const name = item.product.name_tamil || item.product.name;
-                const qty = item.quantity;
-                const price = item.product.selling_price.toFixed(2);
-                const total = (qty * item.product.selling_price).toFixed(2);
-                return (
-                  <tr key={idx}>
-                    <td style={{ textAlign: 'left', padding: '4px 2px 4px 0', wordWrap: 'break-word', fontSize: '12px', verticalAlign: 'top' }}>{name}</td>
-                    <td style={{ textAlign: 'center', padding: '4px 0', fontSize: '12px', verticalAlign: 'top' }}>{qty}</td>
-                    <td style={{ textAlign: 'right', padding: '4px 0', fontSize: '12px', verticalAlign: 'top' }}>{price}</td>
-                    <td style={{ textAlign: 'right', padding: '4px 0', fontSize: '12px', verticalAlign: 'top' }}>{total}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          
-          <div style={{ borderTop: '1px dashed #000', margin: '4px 0' }}></div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
-            <span>எண் : {printOrder.validItems?.length}</span>
-            <span>மொத்தம் : ₹{parseFloat(printOrder.total_amount || 0).toFixed(2)}</span>
-          </div>
-          
-          <div style={{ borderTop: '1px dashed #000', margin: '4px 0' }}></div>
-          
-          <div style={{ textAlign: 'center', fontSize: '12px', marginTop: '6px' }}>பொருட்களை சரி பார்த்து எடுத்து செல்லவும்</div>
-          <div style={{ textAlign: 'center', fontSize: '12px', marginBottom: '10px' }}>நன்றி மீண்டும் வருக</div>
-        </div>
-      </>,
-      document.body
-    )}
     </>
   );
 }
